@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Paleoclimatology Lab</title>
+    <style>
+        :root {
+            --bg-color: #f0f4f8;
+            --panel-bg: #ffffff;
+            --primary: #0277bd;
+            --primary-hover: #01579b;
+            --accent: #ff8f00;
+            --text-main: #333333;
+            --border: #cfd8dc;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        h1, h2, h3 { color: var(--primary); margin-top: 0; }
+        
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, #0277bd, #00acc1);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 { color: white; margin: 0 0 10px 0; }
+
+        .lab-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+        }
+
+        /* Controls Panel */
+        .controls { flex: 1; min-width: 250px; }
+        .control-group { margin-bottom: 20px; }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            border: 2px solid var(--primary);
+            background: white;
+            color: var(--primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        .btn:hover { background: #e1f5fe; }
+        .btn.active {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-action {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+            text-align: center;
+        }
+        .btn-action:hover { background: #ff6f00; border-color: #ff6f00; }
+
+        /* Ice Core Visualizer */
+        .core-display {
+            flex: 1;
+            min-width: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .core-container {
+            position: relative;
+            width: 120px;
+            height: 500px;
+            background-color: #e0f7fa;
+            border: 4px solid #b0bec5;
+            border-radius: 10px;
+            cursor: crosshair;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        /* Core Textures */
+        .core-texture {
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+        #texture-A {
+            background: repeating-linear-gradient(0deg, rgba(255,255,255,0.1) 0px, rgba(255,255,255,0.4) 10px, transparent 10px, transparent 30px);
+        }
+        #texture-B {
+            background: repeating-linear-gradient(0deg, rgba(200,220,230,0.3) 0px, rgba(255,255,255,0.5) 5px, rgba(150,180,200,0.2) 15px, transparent 25px);
+        }
+        #texture-C {
+            background: repeating-linear-gradient(0deg, rgba(100,100,100,0.4) 0px, rgba(150,150,150,0.2) 8px, rgba(255,255,255,0.6) 12px, rgba(50,50,50,0.3) 25px);
+        }
+
+        /* The Reticle/Marker */
+        .marker {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background-color: red;
+            box-shadow: 0 0 8px red;
+            pointer-events: none;
+            display: none;
+            z-index: 10;
+        }
+
+        /* Readout Panel */
+        .readout-panel { flex: 1.5; min-width: 300px; }
+        .monitor {
+            background: #263238;
+            color: #4fc3f7;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border: 4px solid #37474f;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+            margin-bottom: 15px;
+        }
+        .monitor-title { font-size: 0.9em; color: #81c784; margin-bottom: 10px; text-transform: uppercase; }
+        .monitor-value { font-size: 2.5em; font-weight: bold; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+        .monitor-unit { font-size: 1em; color: #b0bec5; }
+        .monitor-desc { font-size: 0.85em; color: #90a4ae; margin-top: 10px; }
+
+        /* Notebook & Table */
+        .notebook { flex: 100%; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
+        th, td { border: 1px solid var(--border); padding: 10px; text-align: center; }
+        th { background: var(--primary); color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        /* CER Section */
+        textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+            margin-bottom: 15px;
+        }
+        .cer-prompt { background: #e8f5e9; padding: 15px; border-left: 5px solid #4caf50; border-radius: 4px; margin-bottom: 15px;}
+
+        /* Print Media Query */
+        @media print {
+            .header, .controls, .core-display, .readout-panel, .btn { display: none !important; }
+            body { background: white; padding: 0; }
+            .notebook { box-shadow: none; border: none; margin: 0; padding: 0; }
+            textarea { border: none; font-size: 1.1em; resize: none; overflow: visible; }
+            h1.print-title { display: block; }
+        }
+        .print-title { display: none; color: black; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🧊 Virtual Ice Core Extraction Lab</h1>
+        <p>You are a paleoclimatologist. Extract data from three distinct ice cores to construct an argument about Earth's changing climate.</p>
+    </div>
+
+    <div class="lab-container">
+        
+        <!-- Controls -->
+        <div class="panel controls">
+            <div class="control-group">
+                <h3>1. Select Ice Core</h3>
+                <button class="btn active" onclick="setCore('A')" id="btn-core-A">Core A: Modern Era (0-150 yrs)</button>
+                <button class="btn" onclick="setCore('B')" id="btn-core-B">Core B: Pre-Industrial (10k yrs ago)</button>
+                <button class="btn" onclick="setCore('C')" id="btn-core-C">Core C: Glacial Max (20k yrs ago)</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>2. Select Analysis Tool</h3>
+                <button class="btn active" onclick="setTool('gas')" id="btn-tool-gas">🫧 Gas Spectrometer (CO2)</button>
+                <button class="btn" onclick="setTool('temp')" id="btn-tool-temp">🌡️ Isotope Scanner (Temp)</button>
+                <button class="btn" onclick="setTool('dust')" id="btn-tool-dust">🔬 Particulate Filter (Dust)</button>
+            </div>
+        </div>
+
+        <!-- Ice Core -->
+        <div class="panel core-display">
+            <h3>Extract Sample</h3>
+            <p style="font-size: 0.85em; color: #666; text-align: center;">Click anywhere on the ice to extract a sample from that depth.</p>
+            <div class="core-container" id="core-container" onclick="extractSample(event)">
+                <div class="core-texture" id="texture-A" style="display: block;"></div>
+                <div class="core-texture" id="texture-B" style="display: none;"></div>
+                <div class="core-texture" id="texture-C" style="display: none;"></div>
+                <div class="marker" id="marker"></div>
+            </div>
+        </div>
+
+        <!-- Readout & Logging -->
+        <div class="panel readout-panel">
+            <h3>3. Lab Readout</h3>
+            <div class="monitor">
+                <div class="monitor-title" id="mon-title">SYSTEM READY. WAITING FOR SAMPLE...</div>
+                <div>
+                    <span class="monitor-value" id="mon-value">--</span>
+                    <span class="monitor-unit" id="mon-unit"></span>
+                </div>
+                <div class="monitor-desc" id="mon-desc">Select a core and click the ice to begin extraction.</div>
+            </div>
+            
+            <button class="btn btn-action" onclick="logData()">📝 Log Data to Notebook</button>
+            <p style="font-size: 0.85em; color: #666;">Tip: Log the CO2 and Temp data from multiple depths in each core to find the pattern.</p>
+        </div>
+
+    </div>
+
+    <!-- Lab Notebook / CER -->
+    <div class="panel notebook">
+        <h1 class="print-title">Ice Core Lab Report</h1>
+        <h2>Lab Notebook: Data Table</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Sample #</th>
+                    <th>Core Source</th>
+                    <th>Depth (Rel. %)</th>
+                    <th>CO2 Level (ppm)</th>
+                    <th>Temp Anomaly (°C)</th>
+                    <th>Dust Concentration</th>
+                </tr>
+            </thead>
+            <tbody id="data-table-body">
+                <!-- Data goes here -->
+            </tbody>
+        </table>
+
+        <hr style="margin: 30px 0; border: 0; border-top: 1px solid var(--border);">
+
+        <h2>Constructing an Argument (CER)</h2>
+        <div class="cer-prompt">
+            <strong>Prompt:</strong> Based on the data you collected in your lab notebook, what is the relationship between atmospheric carbon dioxide (CO2) and global temperatures? Does the modern era (Core A) follow the natural historical patterns found in Cores B and C?
+        </div>
+
+        <h3>Claim</h3>
+        <p style="font-size: 0.85em; color: #666;">Write a 1-2 sentence statement that answers the prompt.</p>
+        <textarea placeholder="Type your claim here..."></textarea>
+
+        <h3>Evidence</h3>
+        <p style="font-size: 0.85em; color: #666;">Provide specific numerical data (ppm, °C) from your data table that supports your claim. Compare Core A to Cores B and C.</p>
+        <textarea placeholder="Type your evidence here..."></textarea>
+
+        <h3>Reasoning</h3>
+        <p style="font-size: 0.85em; color: #666;">Explain *why* your evidence proves your claim. Connect the greenhouse gas data to the temperature changes.</p>
+        <textarea placeholder="Type your reasoning here..."></textarea>
+
+        <button class="btn btn-action" style="width: auto; margin-top: 20px;" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+
+<script>
+    // State variables
+    let activeCore = 'A';
+    let activeTool = 'gas';
+    let currentSample = null;
+    let sampleCounter = 1;
+
+    // Helper: Random noise generator
+    function randomNoise(magnitude) {
+        return (Math.random() * magnitude * 2) - magnitude;
+    }
+
+    // Set Active Core
+    function setCore(coreId) {
+        activeCore = coreId;
+        
+        // Update Buttons
+        document.querySelectorAll('[id^="btn-core-"]').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('btn-core-' + coreId).classList.add('active');
+
+        // Update Textures
+        document.getElementById('texture-A').style.display = 'none';
+        document.getElementById('texture-B').style.display = 'none';
+        document.getElementById('texture-C').style.display = 'none';
+        document.getElementById('texture-' + coreId).style.display = 'block';
+
+        // Clear current sample when switching cores
+        clearSample();
+    }
+
+    // Set Active Tool
+    function setTool(toolId) {
+        activeTool = toolId;
+        
+        // Update Buttons
+        document.querySelectorAll('[id^="btn-tool-"]').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('btn-tool-' + toolId).classList.add('active');
+
+        // Update Readout if a sample is loaded
+        if (currentSample) {
+            updateReadout();
+        }
+    }
+
+    // Extract Data on Click
+    function extractSample(event) {
+        const container = document.getElementById('core-container');
+        const rect = container.getBoundingClientRect();
+        
+        // Calculate Y position percentage (0 = top, 1 = bottom)
+        let yPos = event.clientY - rect.top;
+        let depthPercent = Math.max(0, Math.min(1, yPos / rect.height));
+
+        // Move visual marker
+        const marker = document.getElementById('marker');
+        marker.style.top = (depthPercent * 100) + '%';
+        marker.style.display = 'block';
+
+        // Generate Math Data based on Core & Depth
+        generateData(depthPercent);
+        updateReadout();
+    }
+
+    function generateData(depth) {
+        let co2, temp, dust;
+
+        if (activeCore === 'A') {
+            // Modern Era: Top (0) is present (420+), Bottom (1) is 150 yrs ago (290)
+            co2 = 290 + ((1 - depth) * 135) + randomNoise(3);
+            temp = -0.1 + ((1 - depth) * 1.3) + randomNoise(0.1);
+            dust = 12 + randomNoise(4);
+        } 
+        else if (activeCore === 'B') {
+            // Holocene (10k yrs ago): Stable
+            co2 = 265 + ((1 - depth) * 15) + randomNoise(5);
+            temp = -0.5 + ((1 - depth) * 0.5) + randomNoise(0.2);
+            dust = 18 + randomNoise(5);
+        } 
+        else if (activeCore === 'C') {
+            // Glacial Max (20k yrs ago): Cold, low CO2, very dusty
+            co2 = 185 + ((1 - depth) * 15) + randomNoise(8);
+            temp = -7.0 + ((1 - depth) * 1.5) + randomNoise(0.4);
+            // Add a spike logic for dust bands
+            let isBand = Math.sin(depth * 20) > 0.5; 
+            dust = isBand ? 90 + randomNoise(20) : 40 + randomNoise(10);
+        }
+
+        // Save to current sample state
+        currentSample = {
+            depth: (depth * 100).toFixed(1),
+            co2: Math.round(co2),
+            temp: temp.toFixed(2),
+            dust: Math.round(dust)
+        };
+    }
+
+    function clearSample() {
+        currentSample = null;
+        document.getElementById('marker').style.display = 'none';
+        document.getElementById('mon-title').innerText = "SYSTEM READY.";
+        document.getElementById('mon-value').innerText = "--";
+        document.getElementById('mon-unit').innerText = "";
+        document.getElementById('mon-desc').innerText = "Select a core and click the ice to begin extraction.";
+    }
+
+    function updateReadout() {
+        const titleEl = document.getElementById('mon-title');
+        const valEl = document.getElementById('mon-value');
+        const unitEl = document.getElementById('mon-unit');
+        const descEl = document.getElementById('mon-desc');
+
+        titleEl.innerText = `SAMPLE LOADED | CORE ${activeCore} | DEPTH ${currentSample.depth}%`;
+
+        if (activeTool === 'gas') {
+            valEl.innerText = currentSample.co2;
+            unitEl.innerText = " ppm";
+            descEl.innerText = "Atmospheric Carbon Dioxide concentration trapped in bubbles.";
+            valEl.style.color = (currentSample.co2 > 300) ? "#ef5350" : "#fff"; // Turn red if abnormally high
+        } 
+        else if (activeTool === 'temp') {
+            valEl.innerText = (currentSample.temp > 0 ? "+" : "") + currentSample.temp;
+            unitEl.innerText = " °C";
+            descEl.innerText = "Global Temperature Anomaly compared to 20th-century average.";
+            valEl.style.color = (currentSample.temp > 0) ? "#ef5350" : "#29b6f6"; // Red for warm, blue for cold
+        } 
+        else if (activeTool === 'dust') {
+            valEl.innerText = currentSample.dust;
+            unitEl.innerText = " mg/L";
+            descEl.innerText = "Particulate concentration. High dust usually means a dry, windy Ice Age.";
+            valEl.style.color = "#d4e157";
+        }
+    }
+
+    function logData() {
+        if (!currentSample) {
+            alert("Please extract a sample from the ice core first!");
+            return;
+        }
+
+        const tbody = document.getElementById('data-table-body');
+        const row = document.createElement('tr');
+        
+        let eraName = activeCore === 'A' ? 'Modern' : activeCore === 'B' ? 'Pre-Industrial' : 'Glacial Max';
+
+        row.innerHTML = `
+            <td><strong>${sampleCounter}</strong></td>
+            <td>Core ${activeCore} (${eraName})</td>
+            <td>${currentSample.depth}%</td>
+            <td style="${currentSample.co2 > 300 ? 'color: red; font-weight: bold;' : ''}">${currentSample.co2}</td>
+            <td style="${currentSample.temp > 0 ? 'color: red;' : ''}">${currentSample.temp}</td>
+            <td>${currentSample.dust}</td>
+        `;
+        
+        tbody.appendChild(row);
+        sampleCounter++;
+        
+        // Optional: brief flash effect to show it logged
+        row.style.backgroundColor = "#e8f5e9";
+        setTimeout(() => row.style.backgroundColor = "", 1000);
+    }
+</script>
+
+</body>
+</html>
