@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Paleoclimatology Lab</title>
+    <style>
+        :root {
+            --bg-color: #f0f4f8;
+            --panel-bg: #ffffff;
+            --primary: #0277bd;
+            --primary-hover: #01579b;
+            --accent: #ff8f00;
+            --text-main: #333333;
+            --border: #cfd8dc;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        h1, h2, h3 { color: var(--primary); margin-top: 0; }
+        
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, #0277bd, #00acc1);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 { color: white; margin: 0 0 10px 0; }
+
+        .lab-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+        }
+
+        /* --- NEW: Glacier Context Map --- */
+        .glacier-context {
+            flex: 0.8;
+            min-width: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .glacier-map {
+            width: 100px;
+            height: 400px;
+            background: linear-gradient(to bottom, #ffffff 0%, #b3e5fc 20%, #4fc3f7 50%, #0288d1 85%, #424242 100%);
+            border: 2px solid var(--border);
+            border-radius: 5px;
+            position: relative;
+            margin-top: 10px;
+        }
+        .bedrock-label {
+            position: absolute;
+            bottom: -25px;
+            width: 100%;
+            text-align: center;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        /* Highlight Zones on the Glacier */
+        .zone-marker {
+            position: absolute;
+            left: -10px;
+            width: 120px;
+            border: 3px solid transparent;
+            border-radius: 4px;
+            transition: all 0.3s;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        .zone-marker span {
+            position: absolute;
+            left: 130px;
+            width: 120px;
+            font-size: 0.85em;
+            font-weight: bold;
+            color: #666;
+            background: white;
+            padding: 2px 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            pointer-events: none;
+        }
+        .zone-marker:hover { border-color: rgba(255, 143, 0, 0.5); }
+        .zone-marker.active {
+            border-color: var(--accent);
+            background: rgba(255, 143, 0, 0.2);
+            box-shadow: 0 0 10px rgba(255, 143, 0, 0.5);
+            z-index: 5;
+        }
+
+        /* Set Zone Positions */
+        #zone-A { top: 0%; height: 8%; }    /* Surface */
+        #zone-B { top: 40%; height: 8%; }   /* Middle */
+        #zone-C { top: 75%; height: 8%; }   /* Deep */
+
+        /* --- Controls & Extraction --- */
+        .workbench { flex: 2.5; display: flex; gap: 20px; flex-wrap: wrap; }
+        .tools { flex: 1; min-width: 200px; }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            border: 2px solid var(--primary);
+            background: white;
+            color: var(--primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        .btn:hover { background: #e1f5fe; }
+        .btn.active { background: var(--primary); color: white; }
+        .btn-action { background: var(--accent); color: white; border-color: var(--accent); text-align: center; }
+        .btn-action:hover { background: #ff6f00; border-color: #ff6f00; }
+
+        /* Ice Core Visualizer (Zoomed In) */
+        .core-display {
+            flex: 1;
+            min-width: 150px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .core-container {
+            position: relative;
+            width: 120px;
+            height: 400px;
+            background-color: #e0f7fa;
+            border: 4px solid #b0bec5;
+            border-radius: 10px;
+            cursor: crosshair;
+            overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        .core-texture { width: 100%; height: 100%; pointer-events: none; transition: opacity 0.5s; }
+        #texture-A { background: repeating-linear-gradient(0deg, rgba(255,255,255,0.1) 0px, rgba(255,255,255,0.4) 20px, transparent 20px, transparent 40px); }
+        #texture-B { background: repeating-linear-gradient(0deg, rgba(200,220,230,0.3) 0px, rgba(255,255,255,0.5) 10px, rgba(150,180,200,0.2) 20px, transparent 30px); }
+        #texture-C { background: repeating-linear-gradient(0deg, rgba(100,100,100,0.5) 0px, rgba(150,150,150,0.2) 4px, rgba(255,255,255,0.6) 8px, rgba(50,50,50,0.4) 15px); }
+
+        .marker {
+            position: absolute;
+            left: 0; width: 100%; height: 4px;
+            background-color: red; box-shadow: 0 0 8px red;
+            pointer-events: none; display: none; z-index: 10;
+        }
+
+        /* Readout Panel */
+        .readout-panel { flex: 1.5; min-width: 250px; }
+        .monitor {
+            background: #263238; color: #4fc3f7; padding: 15px; border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace; height: auto; min-height: 180px;
+            display: flex; flex-direction: column; justify-content: center;
+            border: 4px solid #37474f; box-shadow: inset 0 0 15px rgba(0,0,0,0.8);
+            margin-bottom: 15px;
+        }
+        .monitor-title { font-size: 0.85em; color: #81c784; margin-bottom: 5px; text-transform: uppercase; }
+        .monitor-age { font-size: 0.9em; color: #ffca28; margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #555; padding-bottom: 5px;}
+        .monitor-value { font-size: 2.2em; font-weight: bold; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+        .monitor-unit { font-size: 1em; color: #b0bec5; }
+        .monitor-desc { font-size: 0.85em; color: #90a4ae; margin-top: 10px; }
+
+        /* Notebook & Table */
+        .notebook { flex: 100%; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; font-size: 0.95em;}
+        th, td { border: 1px solid var(--border); padding: 8px; text-align: center; }
+        th { background: var(--primary); color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        /* CER Section */
+        textarea { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border); border-radius: 4px; resize: vertical; min-height: 80px; font-family: inherit; margin-bottom: 15px; }
+        .cer-prompt { background: #e8f5e9; padding: 15px; border-left: 5px solid #4caf50; border-radius: 4px; margin-bottom: 15px;}
+
+        @media print {
+            .header, .controls, .core-display, .readout-panel, .btn, .glacier-context { display: none !important; }
+            body { background: white; padding: 0; }
+            .notebook { box-shadow: none; border: none; margin: 0; padding: 0; }
+            textarea { border: none; font-size: 1.1em; resize: none; overflow: visible; }
+            h1.print-title { display: block; }
+        }
+        .print-title { display: none; color: black; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🧊 Virtual Ice Core Extraction Lab</h1>
+        <p>Act as a paleoclimatologist. Extract data from specific depths of an ancient glacier to construct an argument about Earth's changing climate.</p>
+    </div>
+
+    <div class="lab-container">
+        
+        <!-- Glacier Macro View -->
+        <div class="panel glacier-context">
+            <h3 style="text-align: center; font-size: 1.1em;">Glacier Depth Profile</h3>
+            <p style="font-size: 0.8em; color: #666; text-align: center; margin: 0 0 10px 0;">Click a zone to drill a core sample.</p>
+            <div class="glacier-map">
+                <div class="zone-marker active" id="zone-A" onclick="setCore('A')"><span>Core A (0-15m)</span></div>
+                <div class="zone-marker" id="zone-B" onclick="setCore('B')"><span>Core B (800-815m)</span></div>
+                <div class="zone-marker" id="zone-C" onclick="setCore('C')"><span>Core C (1500-1515m)</span></div>
+                <div class="bedrock-label">🪨 Bedrock (2000m)</div>
+            </div>
+        </div>
+
+        <!-- Workbench Tools & Extractor -->
+        <div class="panel workbench">
+            <div class="tools">
+                <div style="margin-bottom: 20px;">
+                    <h3>1. Drill Site</h3>
+                    <button class="btn active" onclick="setCore('A')" id="btn-core-A">Core A (Surface)</button>
+                    <button class="btn" onclick="setCore('B')" id="btn-core-B">Core B (Mid-Glacier)</button>
+                    <button class="btn" onclick="setCore('C')" id="btn-core-C">Core C (Deep Ice)</button>
+                </div>
+                
+                <div>
+                    <h3>2. Analysis Tool</h3>
+                    <button class="btn active" onclick="setTool('gas')" id="btn-tool-gas">🫧 Gas Spectrometer (CO2)</button>
+                    <button class="btn" onclick="setTool('temp')" id="btn-tool-temp">🌡️ Isotope Scanner (Temp)</button>
+                    <button class="btn" onclick="setTool('dust')" id="btn-tool-dust">🔬 Particulate Filter (Dust)</button>
+                </div>
+            </div>
+
+            <div class="core-display">
+                <h3>Extract Sample</h3>
+                <p style="font-size: 0.8em; color: #666; text-align: center; margin-top: 0;">Click the ice core chunk to extract data.</p>
+                <div class="core-container" id="core-container" onclick="extractSample(event)">
+                    <div class="core-texture" id="texture-A" style="display: block;"></div>
+                    <div class="core-texture" id="texture-B" style="display: none;"></div>
+                    <div class="core-texture" id="texture-C" style="display: none;"></div>
+                    <div class="marker" id="marker"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Readout & Logging -->
+        <div class="panel readout-panel">
+            <h3>3. Lab Readout</h3>
+            <div class="monitor">
+                <div class="monitor-title" id="mon-title">SYSTEM READY. WAITING FOR SAMPLE...</div>
+                <div class="monitor-age" id="mon-age">Estimated Age: --</div>
+                <div>
+                    <span class="monitor-value" id="mon-value">--</span>
+                    <span class="monitor-unit" id="mon-unit"></span>
+                </div>
+                <div class="monitor-desc" id="mon-desc">Select a core and click the ice to begin extraction.</div>
+            </div>
+            
+            <button class="btn btn-action" onclick="logData()">📝 Log Data to Notebook</button>
+            <p style="font-size: 0.8em; color: #666; margin-top: 10px;">Tip: Ice compresses under its own weight. Notice how 15 meters of deep ice holds thousands of years of history, while 15 meters of surface ice only holds a century!</p>
+        </div>
+
+    </div>
+
+    <!-- Lab Notebook / CER -->
+    <div class="panel notebook">
+        <h1 class="print-title">Ice Core Lab Report</h1>
+        <h2>Lab Notebook: Data Table</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Sample</th>
+                    <th>Core Source</th>
+                    <th>Depth (m)</th>
+                    <th>Est. Age (Years Ago)</th>
+                    <th>CO2 Level (ppm)</th>
+                    <th>Temp Anomaly (°C)</th>
+                    <th>Dust (mg/L)</th>
+                </tr>
+            </thead>
+            <tbody id="data-table-body">
+                <!-- Data goes here -->
+            </tbody>
+        </table>
+
+        <hr style="margin: 30px 0; border: 0; border-top: 1px solid var(--border);">
+
+        <h2>Constructing an Argument (CER)</h2>
+        <div class="cer-prompt">
+            <strong>Prompt:</strong> Based on the data you collected in your lab notebook, what is the relationship between atmospheric carbon dioxide (CO2) and global temperatures? Does the modern era (Core A) follow the natural historical patterns found in Cores B and C?
+        </div>
+
+        <h3>Claim</h3>
+        <p style="font-size: 0.85em; color: #666; margin-top:0;">Write a 1-2 sentence statement that answers the prompt.</p>
+        <textarea placeholder="Type your claim here..."></textarea>
+
+        <h3>Evidence</h3>
+        <p style="font-size: 0.85em; color: #666; margin-top:0;">Provide specific numerical data (ppm, °C, Age) from your data table that supports your claim.</p>
+        <textarea placeholder="Type your evidence here..."></textarea>
+
+        <h3>Reasoning</h3>
+        <p style="font-size: 0.85em; color: #666; margin-top:0;">Explain *why* your evidence proves your claim. Connect the greenhouse gas data to the temperature changes.</p>
+        <textarea placeholder="Type your reasoning here..."></textarea>
+
+        <button class="btn btn-action" style="width: auto; margin-top: 20px;" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+
+<script>
+    // State variables
+    let activeCore = 'A';
+    let activeTool = 'gas';
+    let currentSample = null;
+    let sampleCounter = 1;
+
+    function randomNoise(magnitude) {
+        return (Math.random() * magnitude * 2) - magnitude;
+    }
+
+    function setCore(coreId) {
+        activeCore = coreId;
+        
+        // Update Buttons
+        document.querySelectorAll('[id^="btn-core-"]').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('btn-core-' + coreId).classList.add('active');
+
+        // Update Macro Glacier Map Highlight
+        document.querySelectorAll('.zone-marker').forEach(zone => zone.classList.remove('active'));
+        document.getElementById('zone-' + coreId).classList.add('active');
+
+        // Update Textures
+        document.getElementById('texture-A').style.display = 'none';
+        document.getElementById('texture-B').style.display = 'none';
+        document.getElementById('texture-C').style.display = 'none';
+        document.getElementById('texture-' + coreId).style.display = 'block';
+
+        clearSample();
+    }
+
+    function setTool(toolId) {
+        activeTool = toolId;
+        document.querySelectorAll('[id^="btn-tool-"]').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('btn-tool-' + toolId).classList.add('active');
+        if (currentSample) updateReadout();
+    }
+
+    function extractSample(event) {
+        const container = document.getElementById('core-container');
+        const rect = container.getBoundingClientRect();
+        
+        // Calculate Y position percentage (0 = top of sample, 1 = bottom of sample)
+        let yPos = event.clientY - rect.top;
+        let relativeDepth = Math.max(0, Math.min(1, yPos / rect.height));
+
+        const marker = document.getElementById('marker');
+        marker.style.top = (relativeDepth * 100) + '%';
+        marker.style.display = 'block';
+
+        generateData(relativeDepth);
+        updateReadout();
+    }
+
+    function generateData(relDepth) {
+        let absDepth, age, co2, temp, dust;
+
+        if (activeCore === 'A') {
+            // Core A: Surface (0m to 15m). Top is 0 years ago (modern), Bottom is 150 years ago.
+            absDepth = 0 + (relDepth * 15);
+            age = 0 + (relDepth * 150);
+            co2 = 290 + ((1 - relDepth) * 135) + randomNoise(3); // 425 at top, 290 at bottom
+            temp = -0.1 + ((1 - relDepth) * 1.3) + randomNoise(0.1);
+            dust = 12 + randomNoise(4);
+        } 
+        else if (activeCore === 'B') {
+            // Core B: Mid-Glacier (800m to 815m). High compression = more years. Age: ~9,800 to 10,200 yrs
+            absDepth = 800 + (relDepth * 15);
+            age = 9800 + (relDepth * 400); 
+            co2 = 265 + ((1 - relDepth) * 15) + randomNoise(5);
+            temp = -0.5 + ((1 - relDepth) * 0.5) + randomNoise(0.2);
+            dust = 18 + randomNoise(5);
+        } 
+        else if (activeCore === 'C') {
+            // Core C: Deep Ice (1500m to 1515m). Extreme compression. Age: ~19,000 to 21,000 yrs
+            absDepth = 1500 + (relDepth * 15);
+            age = 19000 + (relDepth * 2000); 
+            co2 = 185 + ((1 - relDepth) * 15) + randomNoise(8);
+            temp = -7.0 + ((1 - relDepth) * 1.5) + randomNoise(0.4);
+            let isBand = Math.sin(relDepth * 20) > 0.5; 
+            dust = isBand ? 90 + randomNoise(20) : 40 + randomNoise(10);
+        }
+
+        currentSample = {
+            depth: absDepth.toFixed(1),
+            age: Math.round(age),
+            co2: Math.round(co2),
+            temp: temp.toFixed(2),
+            dust: Math.round(dust)
+        };
+    }
+
+    function clearSample() {
+        currentSample = null;
+        document.getElementById('marker').style.display = 'none';
+        document.getElementById('mon-title').innerText = "SYSTEM READY.";
+        document.getElementById('mon-age').innerText = "Estimated Age: --";
+        document.getElementById('mon-value').innerText = "--";
+        document.getElementById('mon-unit').innerText = "";
+        document.getElementById('mon-desc').innerText = "Select a core and click the ice to begin extraction.";
+    }
+
+    function updateReadout() {
+        const titleEl = document.getElementById('mon-title');
+        const ageEl = document.getElementById('mon-age');
+        const valEl = document.getElementById('mon-value');
+        const unitEl = document.getElementById('mon-unit');
+        const descEl = document.getElementById('mon-desc');
+
+        titleEl.innerText = `SAMPLE LOADED | CORE ${activeCore} | DEPTH: ${currentSample.depth} m`;
+        
+        // Format age nicely
+        let formattedAge = currentSample.age === 0 ? "Present Day" : currentSample.age.toLocaleString() + " Years Ago";
+        ageEl.innerText = `Estimated Age: ${formattedAge}`;
+
+        if (activeTool === 'gas') {
+            valEl.innerText = currentSample.co2;
+            unitEl.innerText = " ppm";
+            descEl.innerText = "Carbon Dioxide concentration. Historic natural limit is ~300 ppm.";
+            valEl.style.color = (currentSample.co2 > 300) ? "#ef5350" : "#fff";
+        } 
+        else if (activeTool === 'temp') {
+            valEl.innerText = (currentSample.temp > 0 ? "+" : "") + currentSample.temp;
+            unitEl.innerText = " °C";
+            descEl.innerText = "Global Temp Anomaly compared to the 20th-century average.";
+            valEl.style.color = (currentSample.temp > 0) ? "#ef5350" : "#29b6f6";
+        } 
+        else if (activeTool === 'dust') {
+            valEl.innerText = currentSample.dust;
+            unitEl.innerText = " mg/L";
+            descEl.innerText = "Particulate concentration. High dust indicates a dry, windy Ice Age.";
+            valEl.style.color = "#d4e157";
+        }
+    }
+
+    function logData() {
+        if (!currentSample) {
+            alert("Please click on the ice core to extract a sample first!");
+            return;
+        }
+
+        const tbody = document.getElementById('data-table-body');
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+            <td><strong>${sampleCounter}</strong></td>
+            <td>Core ${activeCore}</td>
+            <td>${currentSample.depth}</td>
+            <td>${currentSample.age === 0 ? "0 (Present)" : currentSample.age.toLocaleString()}</td>
+            <td style="${currentSample.co2 > 300 ? 'color: red; font-weight: bold;' : ''}">${currentSample.co2}</td>
+            <td style="${currentSample.temp > 0 ? 'color: red;' : ''}">${currentSample.temp}</td>
+            <td>${currentSample.dust}</td>
+        `;
+        
+        tbody.appendChild(row);
+        sampleCounter++;
+        
+        row.style.backgroundColor = "#e8f5e9";
+        setTimeout(() => row.style.backgroundColor = "", 1000);
+    }
+</script>
+
+</body>
+</html>
