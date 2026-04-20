@@ -329,6 +329,11 @@
     let currentSample = null;
     let sampleCounter = 1;
 
+    // Platform Integration Variables
+    let coreCounts = { A: 0, B: 0, C: 0 };
+    let allLoggedData = [];
+    let simCompleted = false;
+
     function randomNoise(magnitude) {
         return (Math.random() * magnitude * 2) - magnitude;
     }
@@ -477,10 +482,47 @@
         `;
         
         tbody.appendChild(row);
+        
+        // Track data for teaching platform
+        allLoggedData.push({
+            sampleNumber: sampleCounter,
+            core: activeCore,
+            depth: currentSample.depth,
+            age: currentSample.age,
+            co2: currentSample.co2,
+            temp: currentSample.temp,
+            dust: currentSample.dust
+        });
+        coreCounts[activeCore]++;
+
         sampleCounter++;
         
         row.style.backgroundColor = "#e8f5e9";
         setTimeout(() => row.style.backgroundColor = "", 1000);
+
+        // Check for simulation completion (at least 3 from each core)
+        if (coreCounts.A >= 3 && coreCounts.B >= 3 && coreCounts.C >= 3 && !simCompleted) {
+            simCompleted = true;
+            
+            // Send the required message format to the teaching platform
+            const payload = {
+                action: 'SIM_COMPLETE',
+                simData: {
+                    trialsCompleted: allLoggedData.length,
+                    trialData: allLoggedData
+                }
+            };
+            
+            // Use postMessage to communicate with the parent window (LMS/Platform)
+            if (window.parent) {
+                window.parent.postMessage(payload, "*");
+            }
+            
+            // Visual feedback for the student
+            setTimeout(() => {
+                alert("Simulation Complete! Your data has been successfully synced with the teaching platform. You may now proceed to complete your CER.");
+            }, 100);
+        }
     }
 </script>
 
