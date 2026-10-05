@@ -1,1092 +1,245 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ice Core Data Visualizer</title>
-
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: '#ecfeff',
-                            100: '#cffaff',
-                            500: '#06b6d4',
-                            600: '#0891b2',
-                            900: '#164e63',
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
-                    }
-                }
-            }
-        }
-    </script>
-
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-
-    <!-- Font Awesome Icons CDN -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <style>
-        /* Custom scrollbar for clean scientific theme */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0f172a;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #0891b2;
-        }
-        .glow-effect {
-            box-shadow: 0 0 20px -5px rgba(6, 182, 212, 0.15);
-        }
-        .glow-emerald {
-            box-shadow: 0 0 20px -5px rgba(16, 185, 129, 0.15);
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ice Core Explorer | iteratED</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230891b2'/%3E%3Ctext x='32' y='43' font-family='Arial,sans-serif' font-size='30' font-weight='700' text-anchor='middle' fill='white'%3Ei%3C/text%3E%3Ctext x='40' y='43' font-family='Arial,sans-serif' font-size='30' font-weight='700' fill='%23a5f3fc'%3EE%3C/text%3E%3C/svg%3E">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}</style>
 </head>
-<body class="h-full flex flex-col font-sans antialiased selection:bg-cyan-500 selection:text-slate-950 bg-slate-950">
-
-    <!-- Header / Navbar -->
-    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="p-2.5 bg-gradient-to-tr from-cyan-500 to-emerald-400 rounded-xl text-slate-950 shadow-lg shadow-cyan-500/20">
-                    <i class="fa-solid font-bold fa-icicles text-xl"></i>
-                </div>
-                <div>
-                    <h1 class="font-bold text-lg text-white tracking-tight flex items-center gap-2">
-                        GlacioViz <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800 font-mono font-normal">v2.0 Pro</span>
-                    </h1>
-                    <p class="text-xs text-slate-400 hidden sm:block">Paleo-Climate Stratigraphy & Ice Core Telemetry Suite</p>
-                </div>
-            </div>
-
-            <div class="flex items-center space-x-3">
-                <div class="flex items-center bg-slate-800 rounded-lg p-1 border border-slate-700">
-                    <label for="presetSelector" class="sr-only">Select Dataset Preset</label>
-                    <i class="fa-solid fa-folder-open text-xs text-slate-400 ml-2 mr-1"></i>
-                    <select id="presetSelector" onchange="loadPresetData(this.value)" class="bg-transparent text-slate-200 text-xs py-1 pr-2 focus:outline-none cursor-pointer font-medium">
-                        <option value="default" class="bg-slate-900 text-slate-200">Dataset 1: Modern & Holocene (Default)</option>
-                        <option value="glacial" class="bg-slate-900 text-slate-200">Dataset 2: Last Glacial Maximum (LGM)</option>
-                        <option value="interglacial" class="bg-slate-900 text-slate-200">Dataset 3: Eemian Interglacial Optimum</option>
-                        <option value="epica" class="bg-slate-900 text-slate-200">Dataset 4: EPICA 800k Year Multi-Core</option>
-                    </select>
-                </div>
-
-                <button onclick="toggleInputDrawer()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-xs border border-slate-700 flex items-center gap-1.5 transition">
-                    <i class="fa-solid fa-code text-cyan-400"></i>
-                    <span class="hidden sm:inline">Data Editor</span>
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content Container -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
-
-        <!-- Data Input Panel Section -->
-        <section id="inputSection" class="bg-slate-900 rounded-2xl border border-slate-800 p-5 shadow-xl transition-all duration-300">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">
-                <div class="flex items-center space-x-3">
-                    <i class="fa-solid fa-database text-cyan-400"></i>
-                    <div>
-                        <h2 class="text-sm font-semibold text-white">JSON Ice Core Data Input</h2>
-                        <p class="text-xs text-slate-400">Edit or paste core telemetry parameters to recompute thermal proxies and atmospheric gases</p>
-                    </div>
-                </div>
-                <!-- Validation Badge -->
-                <div id="validationBadge" class="flex items-center space-x-2 text-xs px-3 py-1 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 w-fit">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span id="validationText" class="font-medium">Valid Structure</span>
-                </div>
-            </div>
-
-            <!-- JSON Input Textarea -->
-            <div class="mt-4 relative">
-                <textarea id="jsonInput" spellcheck="false" class="w-full h-40 font-mono text-xs bg-slate-950 text-cyan-300 p-3.5 rounded-xl border border-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 focus:outline-none transition-all resize-y leading-relaxed" placeholder="Paste formatted JSON core data here..."></textarea>
-            </div>
-
-            <!-- Error Banner -->
-            <div id="errorBanner" class="hidden mt-3 p-3 bg-rose-950/60 border border-rose-800 rounded-xl text-rose-300 text-xs flex items-start gap-2">
-                <i class="fa-solid fa-triangle-exclamation text-rose-400 mt-0.5"></i>
-                <span id="errorMessage">Invalid JSON syntax detected. Please review formatted structure.</span>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
-                <div class="flex flex-wrap gap-2">
-                    <button onclick="processData()" class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-semibold text-xs rounded-lg shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-2">
-                        <i class="fa-solid fa-chart-line"></i> Re-Calculate Analytics
-                    </button>
-                    <button onclick="formatJSON()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg border border-slate-700 transition-all flex items-center gap-2">
-                        <i class="fa-solid fa-wand-magic-sparkles text-cyan-400"></i> Auto Format JSON
-                    </button>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <button onclick="resetDefault()" class="px-3.5 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs rounded-lg border border-slate-700 transition-all flex items-center gap-2">
-                        <i class="fa-solid fa-rotate-left"></i> Reset Preset
-                    </button>
-                    <button onclick="clearInput()" class="px-3.5 py-2 bg-slate-900 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 text-xs rounded-lg border border-slate-800 hover:border-rose-800/50 transition-all flex items-center gap-2">
-                        <i class="fa-solid fa-trash"></i> Clear Editor
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- KPI Metrics Grid -->
-        <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <!-- Total Cores -->
-            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-md glow-effect relative overflow-hidden">
-                <div class="text-slate-400 text-xs font-medium flex items-center justify-between">
-                    <span>Total Cores</span>
-                    <i class="fa-solid fa-layer-group text-cyan-400"></i>
-                </div>
-                <div id="kpiTotalCores" class="text-2xl font-bold text-white mt-2 font-mono">0</div>
-                <div class="text-[10px] text-slate-500 mt-1">Sampled Locations</div>
-            </div>
-
-            <!-- Total Samples -->
-            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-md glow-effect relative overflow-hidden">
-                <div class="text-slate-400 text-xs font-medium flex items-center justify-between">
-                    <span>Total Samples</span>
-                    <i class="fa-solid fa-flask text-teal-400"></i>
-                </div>
-                <div id="kpiTotalSamples" class="text-2xl font-bold text-white mt-2 font-mono">0</div>
-                <div class="text-[10px] text-slate-500 mt-1">Isotope Specimen Ct</div>
-            </div>
-
-            <!-- Average CO2 -->
-            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-md glow-effect relative overflow-hidden">
-                <div class="text-slate-400 text-xs font-medium flex items-center justify-between">
-                    <span>Avg CO₂</span>
-                    <i class="fa-solid fa-smog text-emerald-400"></i>
-                </div>
-                <div class="flex items-baseline gap-1 mt-2">
-                    <span id="kpiAvgCO2" class="text-2xl font-bold text-emerald-400 font-mono">0</span>
-                    <span class="text-xs text-slate-400 font-normal">ppm</span>
-                </div>
-                <div class="text-[10px] text-slate-500 mt-1">Trapped Gas Mean</div>
-            </div>
-
-            <!-- Average Temperature -->
-            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-md glow-effect relative overflow-hidden">
-                <div class="text-slate-400 text-xs font-medium flex items-center justify-between">
-                    <span>Avg Delta Temp</span>
-                    <i class="fa-solid fa-temperature-half text-sky-400"></i>
-                </div>
-                <div class="flex items-baseline gap-1 mt-2">
-                    <span id="kpiAvgTemp" class="text-2xl font-bold text-sky-400 font-mono">0</span>
-                    <span class="text-xs text-slate-400 font-normal">°C</span>
-                </div>
-                <div class="text-[10px] text-slate-500 mt-1">δ¹⁸O Proxy Mean</div>
-            </div>
-
-            <!-- Average Dust -->
-            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-md glow-effect relative overflow-hidden">
-                <div class="text-slate-400 text-xs font-medium flex items-center justify-between">
-                    <span>Avg Dust</span>
-                    <i class="fa-solid fa-wind text-amber-400"></i>
-                </div>
-                <div class="flex items-baseline gap-1 mt-2">
-                    <span id="kpiAvgDust" class="text-2xl font-bold text-amber-400 font-mono">0</span>
-                    <span class="text-xs text-slate-400 font-normal">ppb</span>
-                </div>
-                <div class="text-[10px] text-slate-500 mt-1">Particulate Conc.</div>
-            </div>
-
-            <!-- Climate Correlation Metric -->
-            <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-md glow-emerald relative overflow-hidden col-span-2 sm:col-span-1">
-                <div class="text-slate-400 text-xs font-medium flex items-center justify-between">
-                    <span>CO₂ - Temp R²</span>
-                    <i class="fa-solid fa-diagram-project text-teal-400"></i>
-                </div>
-                <div class="flex items-baseline gap-1 mt-2">
-                    <span id="kpiCorrelation" class="text-2xl font-bold text-teal-300 font-mono">0.00</span>
-                </div>
-                <div class="text-[10px] text-slate-500 mt-1">Coupling Pearson Score</div>
-            </div>
-        </section>
-
-        <!-- Stratigraphy Visualizer Canvas Section -->
-        <section class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl space-y-4">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-                <div class="flex items-center space-x-3">
-                    <div class="p-2 bg-cyan-950 text-cyan-400 border border-cyan-800 rounded-lg">
-                        <i class="fa-solid fa-cubes-stacked"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-sm font-semibold text-white">Ice Core Stratigraphy & Micro-Bubble Simulation</h3>
-                        <p class="text-xs text-slate-400">Visualizing trapped CO₂ gas bubbles, volcanic ash dust bands, and annual ice layers</p>
-                    </div>
-                </div>
-                
-                <div class="flex items-center gap-2">
-                    <label for="coreCanvasSelect" class="text-xs text-slate-400">Select Core:</label>
-                    <select id="coreCanvasSelect" onchange="drawStratigraphyCanvas()" class="bg-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 border border-slate-700 focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer font-mono">
-                        <!-- Populated via JS -->
-                    </select>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                <div class="md:col-span-3 bg-slate-950 p-3 rounded-xl border border-slate-800 relative">
-                    <canvas id="stratigraphyCanvas" class="w-full h-44 rounded-lg block cursor-crosshair"></canvas>
-                    <div id="canvasTooltip" class="absolute hidden bg-slate-900/90 text-cyan-200 border border-cyan-700/60 p-2 rounded text-[11px] font-mono pointer-events-none z-10 shadow-lg"></div>
-                </div>
-                <div class="bg-slate-950/60 border border-slate-800 p-4 rounded-xl space-y-3 text-xs">
-                    <h4 class="font-semibold text-slate-200 border-b border-slate-800 pb-1 flex items-center justify-between">
-                        <span>Layer Analysis</span>
-                        <i class="fa-solid fa-microscope text-cyan-400"></i>
-                    </h4>
-                    <div class="space-y-2 text-[11px] text-slate-400">
-                        <div class="flex justify-between">
-                            <span>Bubble Density:</span>
-                            <span id="canvasBubbleDensity" class="text-emerald-400 font-mono">High</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Particulate Layering:</span>
-                            <span id="canvasDustLevel" class="text-amber-400 font-mono">Moderate</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Relative Age Depth:</span>
-                            <span id="canvasAgeDepth" class="text-sky-300 font-mono">12,400 BP</span>
-                        </div>
-                    </div>
-                    <div class="pt-2 text-[10px] text-slate-500 leading-tight">
-                        <i class="fa-solid fa-circle-info mr-1 text-cyan-500"></i> Hover across the interactive core segment to examine depth slices.
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Visual Charts Grid -->
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- CO2 Chart -->
-            <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center space-x-2">
-                        <i class="fa-solid fa-cloud text-emerald-400"></i>
-                        <h3 class="text-sm font-semibold text-white">CO₂ Concentration Limits & Ranges</h3>
-                    </div>
-                    <span class="text-[11px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded font-mono">ppm</span>
-                </div>
-                <div class="relative flex-1 min-h-[250px] w-full">
-                    <canvas id="co2Chart"></canvas>
-                </div>
-            </div>
-
-            <!-- Temperature Chart -->
-            <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center space-x-2">
-                        <i class="fa-solid fa-temperature-arrow-up text-sky-400"></i>
-                        <h3 class="text-sm font-semibold text-white">Temperature Anomaly Proxies (δ¹⁸O)</h3>
-                    </div>
-                    <span class="text-[11px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded font-mono">°C</span>
-                </div>
-                <div class="relative flex-1 min-h-[250px] w-full">
-                    <canvas id="tempChart"></canvas>
-                </div>
-            </div>
-
-            <!-- Dust Chart -->
-            <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center space-x-2">
-                        <i class="fa-solid fa-wind text-amber-400"></i>
-                        <h3 class="text-sm font-semibold text-white">Dust & Micro-Particulate Density</h3>
-                    </div>
-                    <span class="text-[11px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded font-mono">ppb</span>
-                </div>
-                <div class="relative flex-1 min-h-[250px] w-full">
-                    <canvas id="dustChart"></canvas>
-                </div>
-            </div>
-
-            <!-- CO2 vs Temp Scatter Correlation Chart -->
-            <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl shadow-xl flex flex-col justify-between">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center space-x-2">
-                        <i class="fa-solid fa-chart-scatter text-teal-400"></i>
-                        <h3 class="text-sm font-semibold text-white">CO₂ vs. Temperature Telemetry Coupling</h3>
-                    </div>
-                    <span class="text-[11px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded font-mono">Regression</span>
-                </div>
-                <div class="relative flex-1 min-h-[250px] w-full">
-                    <canvas id="scatterChart"></canvas>
-                </div>
-            </div>
-        </section>
-
-        <!-- Core Individual Cards Grid -->
-        <section class="space-y-4">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-800 pb-3 gap-2">
-                <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
-                    <i class="fa-solid fa-microscope text-cyan-400"></i> Core Specimen Analysis Cards
-                </h3>
-                
-                <div class="flex items-center space-x-3 w-full sm:w-auto">
-                    <div class="relative flex-1 sm:flex-none">
-                        <input type="text" id="coreSearchInput" oninput="filterCores(this.value)" placeholder="Search core ID..." class="bg-slate-950 text-slate-200 text-xs px-3 py-1.5 pl-8 rounded-lg border border-slate-800 focus:outline-none focus:border-cyan-500 w-full sm:w-48 font-mono">
-                        <i class="fa-solid fa-magnifying-glass text-slate-500 text-xs absolute left-2.5 top-2.5"></i>
-                    </div>
-                    <span id="coreCountBadge" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full font-mono whitespace-nowrap">0 cores active</span>
-                </div>
-            </div>
-
-            <div id="coreCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Dynamic cards populated via JavaScript -->
-            </div>
-        </section>
-
-        <!-- Data Table Section -->
-        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
-                <div>
-                    <h3 class="text-sm font-semibold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-table-cells text-emerald-400"></i> Tabular Ice Core Dataset
-                    </h3>
-                    <p class="text-xs text-slate-400">Sort and inspect individual paleoclimate metrics</p>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="exportCSV()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg border border-slate-700 flex items-center gap-1.5 transition-all">
-                        <i class="fa-solid fa-download text-xs text-cyan-400"></i> Export CSV
-                    </button>
-                    <button onclick="exportJSONFile()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg border border-slate-700 flex items-center gap-1.5 transition-all">
-                        <i class="fa-solid fa-file-code text-xs text-emerald-400"></i> Export JSON
-                    </button>
-                </div>
-            </div>
-
-            <!-- Table Container -->
-            <div class="overflow-x-auto rounded-xl border border-slate-800">
-                <table class="w-full text-left text-xs text-slate-300">
-                    <thead class="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800 font-mono">
-                        <tr>
-                            <th scope="col" onclick="sortTable('name')" class="py-3 px-4 cursor-pointer hover:text-white transition-colors">
-                                Core Name <i id="sort-name" class="fa-solid fa-sort ml-1 opacity-50"></i>
-                            </th>
-                            <th scope="col" onclick="sortTable('samples')" class="py-3 px-4 text-center cursor-pointer hover:text-white transition-colors">
-                                Samples <i id="sort-samples" class="fa-solid fa-sort ml-1 opacity-50"></i>
-                            </th>
-                            <th scope="col" onclick="sortTable('co2Min')" class="py-3 px-4 text-right cursor-pointer hover:text-white transition-colors">
-                                CO₂ Min <i id="sort-co2Min" class="fa-solid fa-sort ml-1 opacity-50"></i>
-                            </th>
-                            <th scope="col" onclick="sortTable('co2Avg')" class="py-3 px-4 text-right cursor-pointer hover:text-white transition-colors">
-                                CO₂ Avg <i id="sort-co2Avg" class="fa-solid fa-sort ml-1 opacity-50"></i>
-                            </th>
-                            <th scope="col" onclick="sortTable('co2Max')" class="py-3 px-4 text-right cursor-pointer hover:text-white transition-colors">
-                                CO₂ Max <i id="sort-co2Max" class="fa-solid fa-sort ml-1 opacity-50"></i>
-                            </th>
-                            <th scope="col" onclick="sortTable('tempMin')" class="py-3 px-4 text-right cursor-pointer hover:text-white transition-colors">
-                                Temp Min <i id="sort-tempMin" class="fa-solid fa-sort ml-1 opacity-50"></i>
-                            </th>
-                            <th scope="col" onclick="sortTable('tempAvg')" class="py-3 px-4 text-right cursor-pointer hover:text-white transition-colors">
-                                Temp Avg <i id="sort-tempAvg" class="fa-solid fa-sort ml-1 opacity-50"></i>
-                            </th>
-                            <th scope="col" onclick="sortTable('tempMax')" class="py-3 px-4 text-right cursor-pointer hover:text-white transition-colors">
-                                Temp Max <i id="sort-tempMax" class="fa-solid fa-sort ml-1 opacity-50"></i>
-                            </th>
-                            <th scope="col" onclick="sortTable('dustAvg')" class="py-3 px-4 text-right cursor-pointer hover:text-white transition-colors">
-                                Dust Avg <i id="sort-dustAvg" class="fa-solid fa-sort ml-1 opacity-50"></i>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody id="dataTableBody" class="divide-y divide-slate-800/60 bg-slate-900/50 font-mono">
-                        <!-- Dynamic table rows -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-    </main>
-
-    <!-- Footer -->
-    <footer class="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500 mt-8">
-        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p>GlacioViz Paleo-Environmental Telemetry Suite &copy; 2026</p>
-            <p class="text-slate-600">Polar Ice Sheet Dynamics & Geochemical Climate Visualizer</p>
-        </div>
-    </footer>
-
-    <script>
-        // Preset Datasets
-        const PRESETS = {
-            default: {
-                "Core-B_Greenland": {"co2Max":282, "tempMin":-0.4, "dustAvg":18, "tempAvg":-0.24, "co2Avg":277, "samples":14, "co2Min":273, "tempMax":-0.06},
-                "Core-A_LawDome": {"samples":22, "co2Max":384, "tempMax":0.78, "co2Min":322, "dustAvg":9.67, "tempAvg":0.44, "co2Avg":353, "tempMin":0.11},
-                "Core-C_Vostok": {"co2Avg":191.67, "tempAvg":-5.98, "co2Min":187, "dustAvg":71.33, "tempMin":-6.25, "co2Max":196, "tempMax":-5.46, "samples":18},
-                "Core-D_TaylorDome": {"co2Avg":260.40, "tempAvg":-1.85, "co2Min":245, "dustAvg":24.10, "tempMin":-2.40, "co2Max":275, "tempMax":-1.10, "samples":11}
-            },
-            glacial: {
-                "Vostok_LGM": {"samples": 25, "co2Min": 180, "co2Avg": 195, "co2Max": 210, "tempMin": -9.5, "tempAvg": -8.2, "tempMax": -6.8, "dustAvg": 85.4},
-                "EPICA_DomeC_LGM": {"samples": 38, "co2Min": 172, "co2Avg": 188, "co2Max": 204, "tempMin": -10.2, "tempAvg": -8.9, "tempMax": -7.1, "dustAvg": 92.1},
-                "GISP2_Greenland_LGM": {"samples": 19, "co2Min": 190, "co2Avg": 205, "co2Max": 222, "tempMin": -12.1, "tempAvg": -10.4, "tempMax": -8.5, "dustAvg": 64.2},
-                "Siple_Dome_Glacial": {"samples": 15, "co2Min": 185, "co2Avg": 198, "co2Max": 215, "tempMin": -8.8, "tempAvg": -7.6, "tempMax": -6.2, "dustAvg": 78.0}
-            },
-            interglacial: {
-                "Dome_Fuji_Optimum": {"samples": 26, "co2Min": 265, "co2Avg": 280, "co2Max": 298, "tempMin": -1.2, "tempAvg": 0.4, "tempMax": 2.1, "dustAvg": 14.2},
-                "Law_Dome_Holocene": {"samples": 42, "co2Min": 278, "co2Avg": 286, "co2Max": 305, "tempMin": -0.8, "tempAvg": 0.9, "tempMax": 2.8, "dustAvg": 11.5},
-                "NGRIP_Eemian": {"samples": 27, "co2Min": 260, "co2Avg": 274, "co2Max": 289, "tempMin": -2.4, "tempAvg": -0.6, "tempMax": 1.2, "dustAvg": 19.8},
-                "Talos_Dome_Optimum": {"samples": 21, "co2Min": 270, "co2Avg": 282, "co2Max": 295, "tempMin": -0.5, "tempAvg": 0.7, "tempMax": 2.2, "dustAvg": 13.1}
-            },
-            epica: {
-                "EPICA_0_100k": {"samples": 50, "co2Min": 182, "co2Avg": 240, "co2Max": 298, "tempMin": -8.5, "tempAvg": -3.2, "tempMax": 1.5, "dustAvg": 45.0},
-                "EPICA_100k_300k": {"samples": 65, "co2Min": 175, "co2Avg": 232, "co2Max": 290, "tempMin": -9.2, "tempAvg": -3.8, "tempMax": 1.1, "dustAvg": 52.4},
-                "EPICA_300k_500k": {"samples": 58, "co2Min": 180, "co2Avg": 238, "co2Max": 302, "tempMin": -8.9, "tempAvg": -3.0, "tempMax": 2.0, "dustAvg": 41.2},
-                "EPICA_500k_800k": {"samples": 72, "co2Min": 170, "co2Avg": 225, "co2Max": 285, "tempMin": -10.1, "tempAvg": -4.2, "tempMax": 0.8, "dustAvg": 68.3}
-            }
-        };
-
-        let currentParsedData = null;
-        let chartInstances = {};
-        let sortDirection = {};
-        let currentSortColumn = null;
-        let searchQuery = '';
-
-        // Initialize App on DOM Load
-        window.addEventListener('DOMContentLoaded', () => {
-            const jsonTextarea = document.getElementById('jsonInput');
-            jsonTextarea.value = JSON.stringify(PRESETS.default, null, 2);
-            
-            // Add real-time input listener for validation
-            jsonTextarea.addEventListener('input', validateRealtime);
-            
-            // Window resize handler for canvas
-            window.addEventListener('resize', drawStratigraphyCanvas);
-
-            // Initial Process
-            processData();
-        });
-
-        function validateRealtime() {
-            const raw = document.getElementById('jsonInput').value.trim();
-            const badge = document.getElementById('validationBadge');
-            const validationText = document.getElementById('validationText');
-            const errorBanner = document.getElementById('errorBanner');
-            const errorMessage = document.getElementById('errorMessage');
-
-            if (!raw) {
-                badge.className = "flex items-center space-x-2 text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700 w-fit";
-                badge.querySelector('span').className = "w-2 h-2 rounded-full bg-slate-500";
-                validationText.textContent = "Empty Input";
-                errorBanner.classList.add('hidden');
-                return false;
-            }
-
-            try {
-                const parsed = JSON.parse(raw);
-                if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-                    throw new Error("JSON root must be an Object containing core keys (e.g. {\"coreA\": {...}})");
-                }
-                
-                if (Object.keys(parsed).length === 0) {
-                    throw new Error("JSON object contains no core entries.");
-                }
-
-                // Valid state
-                badge.className = "flex items-center space-x-2 text-xs px-3 py-1 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 w-fit";
-                badge.querySelector('span').className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
-                validationText.textContent = "Valid Structure";
-                errorBanner.classList.add('hidden');
-                return true;
-            } catch (err) {
-                // Invalid state
-                badge.className = "flex items-center space-x-2 text-xs px-3 py-1 rounded-full bg-rose-950/80 text-rose-400 border border-rose-800/80 w-fit";
-                badge.querySelector('span').className = "w-2 h-2 rounded-full bg-rose-500";
-                validationText.textContent = "Syntax Error";
-                
-                errorMessage.textContent = err.message;
-                errorBanner.classList.remove('hidden');
-                return false;
-            }
-        }
-
-        function formatJSON() {
-            const raw = document.getElementById('jsonInput').value.trim();
-            try {
-                const parsed = JSON.parse(raw);
-                document.getElementById('jsonInput').value = JSON.stringify(parsed, null, 2);
-                validateRealtime();
-            } catch (e) {
-                validateRealtime();
-            }
-        }
-
-        function resetDefault() {
-            document.getElementById('presetSelector').value = 'default';
-            document.getElementById('jsonInput').value = JSON.stringify(PRESETS.default, null, 2);
-            processData();
-        }
-
-        function clearInput() {
-            document.getElementById('jsonInput').value = '';
-            validateRealtime();
-        }
-
-        function loadPresetData(key) {
-            if (PRESETS[key]) {
-                document.getElementById('jsonInput').value = JSON.stringify(PRESETS[key], null, 2);
-                processData();
-            }
-        }
-
-        function processData() {
-            const isValid = validateRealtime();
-            if (!isValid) return;
-
-            const raw = document.getElementById('jsonInput').value.trim();
-            try {
-                currentParsedData = JSON.parse(raw);
-                
-                // Calculate KPIs & Pearson correlation coefficient
-                updateKPIs(currentParsedData);
-                
-                // Populate Canvas Core Selector
-                populateCanvasSelector(currentParsedData);
-
-                // Draw Stratigraphy Canvas
-                drawStratigraphyCanvas();
-
-                // Update Charts
-                renderCharts(currentParsedData);
-                
-                // Render Core Dynamic Cards
-                renderCoreCards(currentParsedData);
-                
-                // Render Table
-                renderTable(currentParsedData);
-
-            } catch (e) {
-                console.error("Failed to process data", e);
-            }
-        }
-
-        function updateKPIs(data) {
-            const coreKeys = Object.keys(data);
-            const totalCores = coreKeys.length;
-            
-            let totalSamples = 0;
-            let sumWeightedCO2 = 0;
-            let sumWeightedTemp = 0;
-            let sumWeightedDust = 0;
-
-            let totalCO2Simple = 0;
-            let totalTempSimple = 0;
-            let totalDustSimple = 0;
-
-            let co2Values = [];
-            let tempValues = [];
-
-            coreKeys.forEach(key => {
-                const item = data[key];
-                const samples = Number(item.samples) || 1;
-                const co2Avg = Number(item.co2Avg) || 0;
-                const tempAvg = Number(item.tempAvg) || 0;
-                const dustAvg = Number(item.dustAvg) || 0;
-
-                totalSamples += samples;
-                sumWeightedCO2 += co2Avg * samples;
-                sumWeightedTemp += tempAvg * samples;
-                sumWeightedDust += dustAvg * samples;
-
-                totalCO2Simple += co2Avg;
-                totalTempSimple += tempAvg;
-                totalDustSimple += dustAvg;
-
-                co2Values.push(co2Avg);
-                tempValues.push(tempAvg);
-            });
-
-            const overallAvgCO2 = totalSamples > 0 ? (sumWeightedCO2 / totalSamples) : (totalCO2Simple / totalCores);
-            const overallAvgTemp = totalSamples > 0 ? (sumWeightedTemp / totalSamples) : (totalTempSimple / totalCores);
-            const overallAvgDust = totalSamples > 0 ? (sumWeightedDust / totalSamples) : (totalDustSimple / totalCores);
-
-            // Pearson correlation calculation between CO2 & Temp
-            const rScore = calculatePearsonR(co2Values, tempValues);
-
-            document.getElementById('kpiTotalCores').textContent = totalCores;
-            document.getElementById('kpiTotalSamples').textContent = totalSamples;
-            document.getElementById('kpiAvgCO2').textContent = overallAvgCO2.toFixed(1);
-            document.getElementById('kpiAvgTemp').textContent = (overallAvgTemp > 0 ? '+' : '') + overallAvgTemp.toFixed(2);
-            document.getElementById('kpiAvgDust').textContent = overallAvgDust.toFixed(1);
-            document.getElementById('kpiCorrelation').textContent = Math.abs(rScore).toFixed(2);
-            document.getElementById('coreCountBadge').textContent = `${totalCores} core${totalCores > 1 ? 's' : ''} loaded`;
-        }
-
-        function calculatePearsonR(x, y) {
-            const n = x.length;
-            if (n <= 1) return 0;
-            const sumX = x.reduce((a, b) => a + b, 0);
-            const sumY = y.reduce((a, b) => a + b, 0);
-            const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
-            const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0);
-            const sumY2 = y.reduce((sum, yi) => sum + yi * yi, 0);
-
-            const num = (n * sumXY) - (sumX * sumY);
-            const den = Math.sqrt(((n * sumX2) - (sumX * sumX)) * ((n * sumY2) - (sumY * sumY)));
-            if (den === 0) return 0;
-            return num / den;
-        }
-
-        function populateCanvasSelector(data) {
-            const select = document.getElementById('coreCanvasSelect');
-            const currentVal = select.value;
-            select.innerHTML = '';
-            
-            Object.keys(data).forEach(key => {
-                const opt = document.createElement('option');
-                opt.value = key;
-                opt.textContent = key;
-                select.appendChild(opt);
-            });
-
-            if (currentVal && data[currentVal]) {
-                select.value = currentVal;
-            }
-        }
-
-        function drawStratigraphyCanvas() {
-            const canvas = document.getElementById('stratigraphyCanvas');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            
-            // Adjust canvas resolution for high DPI displays
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width;
-            canvas.height = rect.height;
-
-            const selectedCore = document.getElementById('coreCanvasSelect').value;
-            if (!currentParsedData || !currentParsedData[selectedCore]) {
-                ctx.fillStyle = '#0f172a';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                return;
-            }
-
-            const core = currentParsedData[selectedCore];
-            const co2 = core.co2Avg || 250;
-            const dust = core.dustAvg || 20;
-
-            // Draw ice background with layer gradient
-            const bgGrad = ctx.createLinearGradient(0, 0, canvas.width, 0);
-            bgGrad.addColorStop(0, '#0284c7');
-            bgGrad.addColorStop(0.5, '#06b6d4');
-            bgGrad.addColorStop(1, '#0f766e');
-            ctx.fillStyle = bgGrad;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw ice annual compression layers
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-            ctx.lineWidth = 1.5;
-            for (let x = 0; x < canvas.width; x += 15) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x + (x * 0.05), canvas.height);
-                ctx.stroke();
-            }
-
-            // Draw dust band streaks (brownish ash lines)
-            const dustCount = Math.min(Math.floor(dust / 5), 30);
-            ctx.strokeStyle = 'rgba(217, 119, 6, 0.45)';
-            ctx.lineWidth = 2;
-            for (let i = 0; i < dustCount; i++) {
-                const dx = (i * (canvas.width / dustCount)) + (Math.sin(i) * 10);
-                ctx.beginPath();
-                ctx.moveTo(dx, 0);
-                ctx.lineTo(dx, canvas.height);
-                ctx.stroke();
-            }
-
-            // Draw trapped gas bubbles (circles scaling with CO2)
-            const bubbleCount = Math.min(Math.floor(co2 / 6), 120);
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            for (let b = 0; b < bubbleCount; b++) {
-                const bx = (b * 37) % canvas.width;
-                const by = ((b * 19) % (canvas.height - 10)) + 5;
-                const radius = ((b % 3) + 1.5);
-                
-                ctx.beginPath();
-                ctx.arc(bx, by, radius, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // Update details sidebar
-            document.getElementById('canvasBubbleDensity').textContent = co2 > 280 ? 'High' : (co2 > 210 ? 'Moderate' : 'Low');
-            document.getElementById('canvasDustLevel').textContent = dust > 50 ? 'Severe (Volcanic)' : (dust > 20 ? 'Moderate' : 'Clear');
-            document.getElementById('canvasAgeDepth').textContent = `${(core.samples || 1) * 1450} YBP`;
-        }
-
-        function renderCharts(data) {
-            const coreLabels = Object.keys(data);
-            
-            const co2Min = coreLabels.map(k => data[k].co2Min ?? 0);
-            const co2Avg = coreLabels.map(k => data[k].co2Avg ?? 0);
-            const co2Max = coreLabels.map(k => data[k].co2Max ?? 0);
-
-            const tempMin = coreLabels.map(k => data[k].tempMin ?? 0);
-            const tempAvg = coreLabels.map(k => data[k].tempAvg ?? 0);
-            const tempMax = coreLabels.map(k => data[k].tempMax ?? 0);
-
-            const dustAvg = coreLabels.map(k => data[k].dustAvg ?? 0);
-
-            const fontStyle = { family: 'Inter', size: 11 };
-            const gridColor = 'rgba(51, 65, 85, 0.4)';
-
-            // Destroy existing chart instances
-            if (chartInstances.co2) chartInstances.co2.destroy();
-            if (chartInstances.temp) chartInstances.temp.destroy();
-            if (chartInstances.dust) chartInstances.dust.destroy();
-            if (chartInstances.scatter) chartInstances.scatter.destroy();
-
-            // 1. CO2 Chart
-            const ctxCO2 = document.getElementById('co2Chart').getContext('2d');
-            chartInstances.co2 = new Chart(ctxCO2, {
-                type: 'bar',
-                data: {
-                    labels: coreLabels,
-                    datasets: [
-                        { label: 'CO2 Min', data: co2Min, backgroundColor: 'rgba(16, 185, 129, 0.4)', borderColor: '#10b981', borderWidth: 1, borderRadius: 4 },
-                        { label: 'CO2 Avg', data: co2Avg, backgroundColor: 'rgba(6, 182, 212, 0.8)', borderColor: '#06b6d4', borderWidth: 1, borderRadius: 4 },
-                        { label: 'CO2 Max', data: co2Max, backgroundColor: 'rgba(59, 130, 246, 0.4)', borderColor: '#3b82f6', borderWidth: 1, borderRadius: 4 }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#94a3b8', font: fontStyle, boxWidth: 12 } } },
-                    scales: {
-                        x: { ticks: { color: '#94a3b8', font: fontStyle }, grid: { color: gridColor } },
-                        y: { ticks: { color: '#94a3b8', font: fontStyle }, grid: { color: gridColor } }
-                    }
-                }
-            });
-
-            // 2. Temp Chart
-            const ctxTemp = document.getElementById('tempChart').getContext('2d');
-            chartInstances.temp = new Chart(ctxTemp, {
-                type: 'bar',
-                data: {
-                    labels: coreLabels,
-                    datasets: [
-                        { label: 'Temp Min', data: tempMin, backgroundColor: 'rgba(56, 189, 248, 0.5)', borderColor: '#38bdf8', borderWidth: 1, borderRadius: 4 },
-                        { label: 'Temp Avg', data: tempAvg, backgroundColor: 'rgba(14, 165, 233, 0.9)', borderColor: '#0ea5e9', borderWidth: 1, borderRadius: 4 },
-                        { label: 'Temp Max', data: tempMax, backgroundColor: 'rgba(244, 63, 94, 0.6)', borderColor: '#f43f5e', borderWidth: 1, borderRadius: 4 }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#94a3b8', font: fontStyle, boxWidth: 12 } } },
-                    scales: {
-                        x: { ticks: { color: '#94a3b8', font: fontStyle }, grid: { color: gridColor } },
-                        y: { ticks: { color: '#94a3b8', font: fontStyle }, grid: { color: gridColor } }
-                    }
-                }
-            });
-
-            // 3. Dust Chart
-            const ctxDust = document.getElementById('dustChart').getContext('2d');
-            chartInstances.dust = new Chart(ctxDust, {
-                type: 'bar',
-                data: {
-                    labels: coreLabels,
-                    datasets: [{
-                        label: 'Dust Avg (ppb)',
-                        data: dustAvg,
-                        backgroundColor: 'rgba(245, 158, 11, 0.7)',
-                        borderColor: '#f59e0b',
-                        borderWidth: 1,
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#94a3b8', font: fontStyle, boxWidth: 12 } } },
-                    scales: {
-                        x: { ticks: { color: '#94a3b8', font: fontStyle }, grid: { color: gridColor } },
-                        y: { ticks: { color: '#94a3b8', font: fontStyle }, grid: { color: gridColor } }
-                    }
-                }
-            });
-
-            // 4. CO2 vs Temp Scatter Chart
-            const scatterPoints = coreLabels.map(k => ({
-                x: data[k].co2Avg ?? 0,
-                y: data[k].tempAvg ?? 0
-            }));
-
-            const ctxScatter = document.getElementById('scatterChart').getContext('2d');
-            chartInstances.scatter = new Chart(ctxScatter, {
-                type: 'scatter',
-                data: {
-                    datasets: [{
-                        label: 'Core Sample Points',
-                        data: scatterPoints,
-                        backgroundColor: '#14b8a6',
-                        borderColor: '#2dd4bf',
-                        pointRadius: 6,
-                        pointHoverRadius: 9
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { labels: { color: '#94a3b8', font: fontStyle, boxWidth: 12 } },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return ` CO₂: ${context.raw.x} ppm, Temp: ${context.raw.y}°C`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            title: { display: true, text: 'CO₂ Concentration (ppm)', color: '#94a3b8', font: fontStyle },
-                            ticks: { color: '#94a3b8', font: fontStyle },
-                            grid: { color: gridColor }
-                        },
-                        y: {
-                            title: { display: true, text: 'Temperature Anomaly (°C)', color: '#94a3b8', font: fontStyle },
-                            ticks: { color: '#94a3b8', font: fontStyle },
-                            grid: { color: gridColor }
-                        }
-                    }
-                }
-            });
-        }
-
-        function renderCoreCards(data) {
-            const container = document.getElementById('coreCardsGrid');
-            container.innerHTML = '';
-
-            const keys = Object.keys(data).filter(k => k.toLowerCase().includes(searchQuery.toLowerCase()));
-
-            keys.forEach(coreKey => {
-                const core = data[coreKey];
-                const samples = core.samples ?? 1;
-                const co2Min = core.co2Min ?? 0;
-                const co2Avg = core.co2Avg ?? 0;
-                const co2Max = core.co2Max ?? 0;
-                const tempMin = core.tempMin ?? 0;
-                const tempAvg = core.tempAvg ?? 0;
-                const tempMax = core.tempMax ?? 0;
-                const dustAvg = core.dustAvg ?? 0;
-
-                const tempBadgeColor = tempAvg >= 0 
-                    ? 'bg-rose-950/60 text-rose-300 border-rose-800' 
-                    : 'bg-sky-950/60 text-sky-300 border-sky-800';
-
-                const cardHtml = `
-                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg hover:border-slate-700 transition-all flex flex-col justify-between space-y-4">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-2.5">
-                                <div class="w-8 h-8 rounded-lg bg-cyan-950 border border-cyan-800 flex items-center justify-center text-cyan-400 font-bold font-mono text-sm">
-                                    ${coreKey.charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                    <h4 class="font-bold text-white text-base tracking-tight font-mono">${coreKey}</h4>
-                                    <span class="text-[10px] text-slate-400">Specimen Core Telemetry</span>
-                                </div>
-                            </div>
-                            <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-mono">
-                                <i class="fa-solid fa-vial text-[10px] text-cyan-400 mr-1"></i>${samples} sample${samples > 1 ? 's' : ''}
-                            </span>
-                        </div>
-
-                        <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2">
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="text-slate-400 font-medium flex items-center gap-1">
-                                    <i class="fa-solid fa-smog text-emerald-400"></i> CO₂ Band Range
-                                </span>
-                                <span class="font-mono text-emerald-400 font-semibold">${co2Avg} ppm</span>
-                            </div>
-                            <div class="flex items-center justify-between text-[11px] font-mono text-slate-400">
-                                <span>Min: ${co2Min}</span>
-                                <span>Max: ${co2Max}</span>
-                            </div>
-                            <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden flex">
-                                <div class="bg-gradient-to-r from-emerald-500 via-cyan-400 to-blue-500 h-full rounded-full w-full"></div>
-                            </div>
-                        </div>
-
-                        <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2">
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="text-slate-400 font-medium flex items-center gap-1">
-                                    <i class="fa-solid fa-temperature-half text-sky-400"></i> Temperature
-                                </span>
-                                <span class="px-2 py-0.5 rounded text-[11px] font-mono border ${tempBadgeColor}">
-                                    Avg: ${tempAvg > 0 ? '+' : ''}${tempAvg}°C
-                                </span>
-                            </div>
-                            <div class="flex items-center justify-between text-[11px] font-mono text-slate-400">
-                                <span>Min: ${tempMin}°C</span>
-                                <span>Max: ${tempMax}°C</span>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-800/60">
-                            <span class="text-slate-400 flex items-center gap-1.5">
-                                <i class="fa-solid fa-wind text-amber-400"></i> Dust Particulates
-                            </span>
-                            <span class="font-mono text-amber-300 font-medium">${dustAvg} ppb</span>
-                        </div>
-                    </div>
-                `;
-
-                container.insertAdjacentHTML('beforeend', cardHtml);
-            });
-        }
-
-        function filterCores(query) {
-            searchQuery = query;
-            if (currentParsedData) renderCoreCards(currentParsedData);
-        }
-
-        function renderTable(data) {
-            const tbody = document.getElementById('dataTableBody');
-            tbody.innerHTML = '';
-
-            const coreKeys = Object.keys(data);
-            
-            let rows = coreKeys.map(key => ({
-                name: key,
-                samples: data[key].samples ?? 0,
-                co2Min: data[key].co2Min ?? 0,
-                co2Avg: data[key].co2Avg ?? 0,
-                co2Max: data[key].co2Max ?? 0,
-                tempMin: data[key].tempMin ?? 0,
-                tempAvg: data[key].tempAvg ?? 0,
-                tempMax: data[key].tempMax ?? 0,
-                dustAvg: data[key].dustAvg ?? 0
-            }));
-
-            // Handle Sorting if active
-            if (currentSortColumn) {
-                const isAsc = sortDirection[currentSortColumn] === 'asc';
-                rows.sort((a, b) => {
-                    let valA = a[currentSortColumn];
-                    let valB = b[currentSortColumn];
-                    if (typeof valA === 'string') {
-                        return isAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-                    }
-                    return isAsc ? valA - valB : valB - valA;
-                });
-            }
-
-            rows.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-800/50 transition-colors";
-
-                tr.innerHTML = `
-                    <td class="py-3 px-4 font-semibold text-white">${row.name}</td>
-                    <td class="py-3 px-4 text-center text-slate-300">${row.samples}</td>
-                    <td class="py-3 px-4 text-right text-emerald-400/80">${row.co2Min}</td>
-                    <td class="py-3 px-4 text-right text-emerald-400 font-semibold">${row.co2Avg}</td>
-                    <td class="py-3 px-4 text-right text-emerald-400/80">${row.co2Max}</td>
-                    <td class="py-3 px-4 text-right text-sky-300">${row.tempMin}°C</td>
-                    <td class="py-3 px-4 text-right text-sky-400 font-semibold">${row.tempAvg > 0 ? '+' : ''}${row.tempAvg}°C</td>
-                    <td class="py-3 px-4 text-right text-rose-300">${row.tempMax}°C</td>
-                    <td class="py-3 px-4 text-right text-amber-400">${row.dustAvg}</td>
-                `;
-
-                tbody.appendChild(tr);
-            });
-        }
-
-        function sortTable(column) {
-            if (currentSortColumn === column) {
-                sortDirection[column] = sortDirection[column] === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSortColumn = column;
-                sortDirection[column] = 'asc';
-            }
-
-            const allHeaders = ['name', 'samples', 'co2Min', 'co2Avg', 'co2Max', 'tempMin', 'tempAvg', 'tempMax', 'dustAvg'];
-            allHeaders.forEach(col => {
-                const icon = document.getElementById(`sort-${col}`);
-                if (icon) {
-                    if (col === column) {
-                        icon.className = sortDirection[col] === 'asc' 
-                            ? "fa-solid fa-sort-up ml-1 text-cyan-400 opacity-100" 
-                            : "fa-solid fa-sort-down ml-1 text-cyan-400 opacity-100";
-                    } else {
-                        icon.className = "fa-solid fa-sort ml-1 opacity-40";
-                    }
-                }
-            });
-
-            if (currentParsedData) {
-                renderTable(currentParsedData);
-            }
-        }
-
-        function exportCSV() {
-            if (!currentParsedData) return;
-
-            const headers = ["Core Name", "Samples", "CO2 Min", "CO2 Avg", "CO2 Max", "Temp Min", "Temp Avg", "Temp Max", "Dust Avg"];
-            const rows = Object.keys(currentParsedData).map(k => {
-                const c = currentParsedData[k];
-                return [
-                    k,
-                    c.samples ?? 0,
-                    c.co2Min ?? 0,
-                    c.co2Avg ?? 0,
-                    c.co2Max ?? 0,
-                    c.tempMin ?? 0,
-                    c.tempAvg ?? 0,
-                    c.tempMax ?? 0,
-                    c.dustAvg ?? 0
-                ].join(',');
-            });
-
-            const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `ice_core_telemetry_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function exportJSONFile() {
-            if (!currentParsedData) return;
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentParsedData, null, 2));
-            const link = document.createElement("a");
-            link.setAttribute("href", dataStr);
-            link.setAttribute("download", `ice_core_telemetry_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function toggleInputDrawer() {
-            const inputSection = document.getElementById('inputSection');
-            inputSection.classList.toggle('hidden');
-        }
-    </script>
+<body class="bg-sky-50 text-slate-800">
+
+<header class="bg-white border-b border-sky-200">
+  <div class="max-w-5xl mx-auto px-4 h-16 flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-cyan-600 text-white font-bold flex items-center justify-center text-lg">i<span class="text-cyan-200">E</span></div>
+    <div>
+      <div class="font-bold text-lg leading-tight">iterat<span class="text-cyan-600">ED</span></div>
+      <div class="text-xs text-slate-500">Ice Core Explorer</div>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-4 py-6 space-y-6">
+
+  <!-- Step 1 -->
+  <section class="bg-white rounded-2xl border border-sky-200 p-5 shadow-sm">
+    <h2 class="text-xl font-bold">Step 1: Paste your data</h2>
+    <p class="text-slate-600 mt-1">Paste the data you collected from the ice core activity, then click the button.</p>
+    <textarea id="input" spellcheck="false" rows="5" class="mt-3 w-full border border-slate-300 rounded-xl p-3 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="Paste your data here..."></textarea>
+    <div id="msg" class="hidden mt-2 text-sm rounded-lg p-3 bg-amber-50 border border-amber-300 text-amber-900"></div>
+    <div class="mt-3 flex flex-wrap gap-2">
+      <button onclick="run()" class="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold px-5 py-2.5 rounded-xl">Show My Results</button>
+      <button onclick="loadExample()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl border border-slate-300">Try Example Data</button>
+      <button onclick="clearAll()" class="text-slate-500 hover:text-slate-700 px-3 py-2.5">Clear</button>
+    </div>
+  </section>
+
+  <div id="results" class="hidden space-y-6">
+
+    <!-- Summary -->
+    <section>
+      <h2 class="text-xl font-bold">Step 2: Your results</h2>
+      <p id="count" class="text-slate-600 text-sm mt-1"></p>
+      <div id="cards" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3"></div>
+    </section>
+
+    <!-- Bar chart -->
+    <section class="bg-white rounded-2xl border border-sky-200 p-5 shadow-sm">
+      <h2 class="text-xl font-bold">Compare the cores</h2>
+      <p class="text-slate-600 text-sm mt-1">Pick what you want to compare. Each bar is the average for that core.</p>
+      <div class="mt-3 flex flex-wrap gap-2" id="toggles"></div>
+      <div class="relative h-72 mt-4"><canvas id="barChart"></canvas></div>
+    </section>
+
+    <!-- Scatter -->
+    <section class="bg-white rounded-2xl border border-sky-200 p-5 shadow-sm">
+      <h2 class="text-xl font-bold">Is CO₂ connected to temperature?</h2>
+      <p class="text-slate-600 text-sm mt-1">Each dot is one sample you collected.</p>
+      <div class="relative h-72 mt-4"><canvas id="scatterChart"></canvas></div>
+      <div id="insight" class="mt-4 rounded-xl bg-cyan-50 border border-cyan-200 p-4 text-sm"></div>
+    </section>
+
+    <!-- Table -->
+    <section class="bg-white rounded-2xl border border-sky-200 p-5 shadow-sm">
+      <h2 class="text-xl font-bold">All your samples</h2>
+      <div class="overflow-x-auto mt-3">
+        <table class="w-full text-sm text-left">
+          <thead class="text-slate-500 border-b border-slate-200">
+            <tr><th class="py-2 pr-3">Sample</th><th class="pr-3">Core</th><th class="pr-3">Depth (%)</th><th class="pr-3">CO₂ (ppm)</th><th class="pr-3">Temp change (°C)</th><th>Dust (ppb)</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Glossary -->
+    <section class="bg-white rounded-2xl border border-sky-200 p-5 shadow-sm">
+      <h2 class="text-xl font-bold">What do these words mean?</h2>
+      <dl class="mt-3 grid md:grid-cols-3 gap-4 text-sm">
+        <div><dt class="font-semibold">🫧 CO₂ (ppm)</dt><dd class="text-slate-600">Carbon dioxide gas trapped in tiny air bubbles in the ice. ppm means "parts per million."</dd></div>
+        <div><dt class="font-semibold">🌡️ Temperature change (°C)</dt><dd class="text-slate-600">How much warmer (+) or colder (−) the past was compared to today.</dd></div>
+        <div><dt class="font-semibold">🌫️ Dust (ppb)</dt><dd class="text-slate-600">Tiny bits of dust and ash trapped in the ice. ppb means "parts per billion."</dd></div>
+      </dl>
+    </section>
+  </div>
+</main>
+
+<footer class="text-center text-xs text-slate-400 py-6">iteratED &copy; 2026</footer>
+
+<script>
+const EXAMPLE = [{"toolViewed":"gas","secondsElapsed":7,"co2":384,"dust":9,"temp":0.78,"sample":1,"core":"A","depthPercent":31.9},{"co2":353,"toolViewed":"gas","dust":11,"temp":0.42,"secondsElapsed":8,"depthPercent":55.7,"core":"A","sample":2},{"secondsElapsed":15,"sample":3,"core":"A","toolViewed":"gas","co2":322,"depthPercent":77.9,"dust":9,"temp":0.11},{"toolViewed":"gas","core":"B","depthPercent":17.7,"sample":4,"temp":-0.06,"dust":17,"secondsElapsed":20,"co2":282},{"depthPercent":53.1,"toolViewed":"gas","co2":276,"sample":5,"core":"B","secondsElapsed":21,"dust":19,"temp":-0.25},{"sample":6,"secondsElapsed":23,"depthPercent":77.9,"co2":273,"core":"B","toolViewed":"gas","temp":-0.4,"dust":18},{"sample":7,"secondsElapsed":26,"toolViewed":"gas","core":"C","co2":196,"depthPercent":11.6,"temp":-5.46,"dust":83},{"depthPercent":52.3,"core":"C","toolViewed":"gas","secondsElapsed":26,"sample":8,"dust":33,"temp":-6.22,"co2":187},{"co2":192,"secondsElapsed":27,"core":"C","sample":9,"depthPercent":68.1,"dust":98,"temp":-6.25,"toolViewed":"gas"}];
+
+const METRICS = {
+  co2:  { label: 'CO₂',         unit: 'ppm', icon: '🫧', color: '#0891b2' },
+  temp: { label: 'Temperature', unit: '°C',  icon: '🌡️', color: '#0ea5e9' },
+  dust: { label: 'Dust',        unit: 'ppb', icon: '🌫️', color: '#d97706' }
+};
+const CORE_COLORS = ['#0891b2', '#7c3aed', '#e11d48', '#16a34a', '#d97706', '#475569'];
+
+let samples = [], cores = {}, barChart = null, scatterChart = null, currentMetric = 'co2';
+
+const $ = id => document.getElementById(id);
+const num = v => (v === null || v === undefined || v === '' || isNaN(Number(v))) ? null : Number(v);
+const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+const fmt = (v, d = 1) => v === null ? '—' : Number(v.toFixed(d)).toString();
+
+function showMsg(t) { $('msg').textContent = t; $('msg').classList.remove('hidden'); }
+function hideMsg() { $('msg').classList.add('hidden'); }
+
+function loadExample() { $('input').value = JSON.stringify(EXAMPLE); run(); }
+function clearAll() { $('input').value = ''; hideMsg(); $('results').classList.add('hidden'); }
+
+function run() {
+  hideMsg();
+  const raw = $('input').value.trim();
+  if (!raw) return showMsg('Paste your data in the box first.');
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch (e) { return showMsg("Hmm, that data doesn't look right. Make sure you copied all of it, from the first [ to the last ].") }
+  if (!Array.isArray(parsed) || parsed.length === 0) return showMsg('We could not find any samples in that data.');
+
+  samples = parsed.filter(s => s && typeof s === 'object' && s.core).map(s => ({
+    sample: num(s.sample), core: String(s.core), depth: num(s.depthPercent),
+    co2: num(s.co2), temp: num(s.temp), dust: num(s.dust)
+  }));
+  if (!samples.length) return showMsg('We could not find any samples with a core letter.');
+
+  // Group by core, averaging only the values that exist
+  cores = {};
+  samples.forEach(s => { (cores[s.core] = cores[s.core] || []).push(s); });
+  Object.keys(cores).forEach(k => {
+    const list = cores[k];
+    cores[k] = { n: list.length };
+    Object.keys(METRICS).forEach(m => {
+      const vals = list.map(x => x[m]).filter(v => v !== null);
+      cores[k][m] = avg(vals);
+    });
+  });
+
+  $('results').classList.remove('hidden');
+  render();
+}
+
+function describe(m, v) {
+  if (v === null) return '';
+  if (m === 'co2') return v > 280 ? 'High CO₂' : v > 210 ? 'Medium CO₂' : 'Low CO₂';
+  if (m === 'temp') return v > 0 ? 'Warmer than today' : v > -2 ? 'About the same as today' : 'Much colder than today';
+  return v > 50 ? 'Very dusty' : v > 20 ? 'Some dust' : 'Not very dusty';
+}
+
+function render() {
+  const names = Object.keys(cores).sort();
+  $('count').textContent = `You collected ${samples.length} sample${samples.length === 1 ? '' : 's'} from ${names.length} core${names.length === 1 ? '' : 's'}.`;
+
+  // Cards
+  $('cards').innerHTML = names.map(k => {
+    const c = cores[k];
+    const lines = Object.keys(METRICS).filter(m => c[m] !== null).map(m => `
+      <div class="flex items-center justify-between py-2 border-t border-slate-100">
+        <div><div class="text-sm font-medium">${METRICS[m].icon} ${METRICS[m].label}</div><div class="text-xs text-slate-500">${describe(m, c[m])}</div></div>
+        <div class="font-bold text-lg">${m === 'temp' && c[m] > 0 ? '+' : ''}${fmt(c[m], m === 'temp' ? 2 : 1)} <span class="text-xs font-normal text-slate-500">${METRICS[m].unit}</span></div>
+      </div>`).join('');
+    return `<div class="bg-white rounded-2xl border border-sky-200 p-5 shadow-sm">
+      <div class="flex items-center justify-between mb-2"><h3 class="text-lg font-bold">Core ${k}</h3><span class="text-xs bg-sky-100 text-sky-800 rounded-full px-2.5 py-1">${c.n} sample${c.n === 1 ? '' : 's'}</span></div>
+      <div class="text-xs text-slate-500 mb-1">Averages</div>${lines || '<p class="text-sm text-slate-500">No measurements yet.</p>'}</div>`;
+  }).join('');
+
+  // Toggle buttons (only metrics that have data)
+  const available = Object.keys(METRICS).filter(m => names.some(k => cores[k][m] !== null));
+  if (!available.includes(currentMetric)) currentMetric = available[0];
+  $('toggles').innerHTML = available.map(m => `<button onclick="setMetric('${m}')" id="tg-${m}" class="px-4 py-2 rounded-xl border text-sm font-medium">${METRICS[m].icon} ${METRICS[m].label}</button>`).join('');
+  drawBar();
+
+  drawScatter(names);
+
+  // Table
+  const sorted = [...samples].sort((a, b) => (a.core.localeCompare(b.core)) || ((a.sample ?? 0) - (b.sample ?? 0)));
+  $('rows').innerHTML = sorted.map(s => `<tr class="border-b border-slate-100">
+    <td class="py-2 pr-3">${s.sample ?? '—'}</td><td class="pr-3">Core ${s.core}</td><td class="pr-3">${fmt(s.depth)}</td>
+    <td class="pr-3">${fmt(s.co2, 0)}</td><td class="pr-3">${fmt(s.temp, 2)}</td><td>${fmt(s.dust, 0)}</td></tr>`).join('');
+}
+
+function setMetric(m) { currentMetric = m; drawBar(); }
+
+function drawBar() {
+  const names = Object.keys(cores).sort();
+  const M = METRICS[currentMetric];
+  document.querySelectorAll('#toggles button').forEach(b => {
+    const on = b.id === 'tg-' + currentMetric;
+    b.className = 'px-4 py-2 rounded-xl border text-sm font-medium ' + (on ? 'bg-cyan-600 text-white border-cyan-600' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50');
+  });
+  if (barChart) barChart.destroy();
+  barChart = new Chart($('barChart'), {
+    type: 'bar',
+    data: { labels: names.map(n => 'Core ' + n), datasets: [{ data: names.map(n => cores[n][currentMetric]), backgroundColor: M.color, borderRadius: 8 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${fmt(c.raw, 2)} ${M.unit}` } } },
+      scales: { y: { title: { display: true, text: `${M.label} (${M.unit})` } } }
+    }
+  });
+}
+
+function drawScatter(names) {
+  const pts = samples.filter(s => s.co2 !== null && s.temp !== null);
+  if (scatterChart) scatterChart.destroy();
+  scatterChart = new Chart($('scatterChart'), {
+    type: 'scatter',
+    data: { datasets: names.map((n, i) => ({
+      label: 'Core ' + n,
+      data: pts.filter(p => p.core === n).map(p => ({ x: p.co2, y: p.temp })),
+      backgroundColor: CORE_COLORS[i % CORE_COLORS.length], pointRadius: 7, pointHoverRadius: 9
+    })) },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { tooltip: { callbacks: { label: c => ` CO₂: ${c.raw.x} ppm, Temp: ${c.raw.y}°C` } } },
+      scales: {
+        x: { title: { display: true, text: 'CO₂ (ppm)' } },
+        y: { title: { display: true, text: 'Temperature change (°C)' } }
+      }
+    }
+  });
+
+  const box = $('insight');
+  if (pts.length < 3) { box.innerHTML = '🔍 Collect CO₂ <b>and</b> temperature from at least 3 samples to see if they are connected.'; return; }
+  const r = pearson(pts.map(p => p.co2), pts.map(p => p.temp));
+  let text;
+  if (r === null) text = 'The dots all have the same CO₂ or temperature, so we cannot spot a pattern yet. Try samples from different cores!';
+  else if (r > 0.7) text = '<b>Strong pattern!</b> When CO₂ was higher, the temperature was usually warmer too.';
+  else if (r > 0.3) text = '<b>Some pattern.</b> Higher CO₂ tends to go with warmer temperatures, but not always.';
+  else if (r < -0.3) text = '<b>Surprise!</b> Higher CO₂ went with colder temperatures in your data. Check your samples. Does that seem right?';
+  else text = '<b>No clear pattern</b> in your data yet. Try collecting more samples.';
+  box.innerHTML = '🔍 ' + text;
+}
+
+function pearson(x, y) {
+  const n = x.length, mx = avg(x), my = avg(y);
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) { sxy += (x[i] - mx) * (y[i] - my); sxx += (x[i] - mx) ** 2; syy += (y[i] - my) ** 2; }
+  return sxx === 0 || syy === 0 ? null : sxy / Math.sqrt(sxx * syy);
+}
+</script>
 </body>
 </html>
