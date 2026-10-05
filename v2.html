@@ -81,6 +81,9 @@ tr:nth-child(even){background:#f9f9f9}
         <h3>3. Lab Readout</h3>
         <div class="monitor">
             <div class="monitor-title" id="mon-title">SYSTEM READY. WAITING FOR SAMPLE...</div>
+            <div id="mon-age" style="color:#ffca28;font-weight:bold;font-size:1.05em;margin-bottom:6px;display:none;">
+                Estimated Age: <span id="mon-age-val">--</span> Years Ago
+            </div>
             <div>
                 <span class="monitor-value" id="mon-value">--</span>
                 <span class="monitor-unit" id="mon-unit"></span>
@@ -107,6 +110,7 @@ tr:nth-child(even){background:#f9f9f9}
         <thead>
             <tr>
                 <th>Sample #</th><th>Core Source</th><th>Depth (Rel. %)</th>
+                <th>Est. Age (Years Ago)</th>
                 <th>CO2 Level (ppm)</th><th>Temp Anomaly (°C)</th><th>Dust Concentration</th>
             </tr>
         </thead>
@@ -163,23 +167,28 @@ tr:nth-child(even){background:#f9f9f9}
     }
 
     function generateData(depth) {
-        let co2, temp, dust;
+        let co2, temp, dust, age;
         if (activeCore === 'A') {
             co2 = 290 + ((1 - depth) * 135) + randomNoise(3);
             temp = -0.1 + ((1 - depth) * 1.3) + randomNoise(0.1);
             dust = 12 + randomNoise(4);
+            age = Math.round(depth * 150);
         } else if (activeCore === 'B') {
             co2 = 265 + ((1 - depth) * 15) + randomNoise(5);
             temp = -0.5 + ((1 - depth) * 0.5) + randomNoise(0.2);
             dust = 18 + randomNoise(5);
+            age = Math.round(9700 + depth * 600);
         } else {
             co2 = 185 + ((1 - depth) * 15) + randomNoise(8);
             temp = -7.0 + ((1 - depth) * 1.5) + randomNoise(0.4);
             const isBand = Math.sin(depth * 20) > 0.5;
             dust = isBand ? 90 + randomNoise(20) : 40 + randomNoise(10);
+            age = Math.round(19000 + depth * 2000);
         }
         currentSample = {
             depth: (depth * 100).toFixed(1),
+            age: age.toLocaleString(),
+            rawAge: age,
             co2: Math.round(co2),
             temp: temp.toFixed(2),
             dust: Math.round(dust)
@@ -190,6 +199,7 @@ tr:nth-child(even){background:#f9f9f9}
         currentSample = null;
         currentSampleLogged = false;
         document.getElementById('marker').style.display = 'none';
+        document.getElementById('mon-age').style.display = 'none';
         document.getElementById('mon-title').innerText = "SYSTEM READY.";
         document.getElementById('mon-value').innerText = "--";
         document.getElementById('mon-unit').innerText = "";
@@ -201,6 +211,8 @@ tr:nth-child(even){background:#f9f9f9}
         const unitEl = document.getElementById('mon-unit');
         const descEl = document.getElementById('mon-desc');
         document.getElementById('mon-title').innerText = `SAMPLE LOADED | CORE ${activeCore} | DEPTH ${currentSample.depth}%`;
+        document.getElementById('mon-age').style.display = 'block';
+        document.getElementById('mon-age-val').innerText = currentSample.age;
         if (activeTool === 'gas') {
             valEl.innerText = currentSample.co2;
             unitEl.innerText = " ppm";
@@ -228,6 +240,7 @@ tr:nth-child(even){background:#f9f9f9}
             sample: sampleCounter,
             core: activeCore,
             depthPercent: parseFloat(currentSample.depth),
+            estAgeYearsAgo: currentSample.rawAge,
             co2: currentSample.co2,
             temp: parseFloat(currentSample.temp),
             dust: currentSample.dust,
@@ -241,6 +254,7 @@ tr:nth-child(even){background:#f9f9f9}
             <td><strong>${sampleCounter}</strong></td>
             <td>Core ${activeCore} (${eraName})</td>
             <td>${currentSample.depth}%</td>
+            <td>${currentSample.age}</td>
             <td style="${currentSample.co2 > 300 ? 'color:red;font-weight:bold;' : ''}">${currentSample.co2}</td>
             <td style="${currentSample.temp > 0 ? 'color:red;' : ''}">${currentSample.temp}</td>
             <td>${currentSample.dust}</td>`;
