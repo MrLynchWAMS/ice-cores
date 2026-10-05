@@ -116,10 +116,7 @@ tr:nth-child(even){background:#f9f9f9}
 
 <script>
     // ===== CONFIG =====
-    // Lab counts as "completed" when every core has at least this many logged samples.
     const MIN_SAMPLES_PER_CORE = 3;
-    // Platform message type (change if your platform listens for a different type).
-    const MESSAGE_TYPE = 'simulationOutput';
 
     // ===== STATE =====
     let activeCore = 'A';
@@ -128,8 +125,8 @@ tr:nth-child(even){background:#f9f9f9}
     let currentSampleLogged = false;
     let sampleCounter = 1;
     const startTime = Date.now();
-    const loggedSamples = [];                    // every logged data point
-    const extractedCount = { A: 0, B: 0, C: 0 }; // clicks on the ice, logged or not
+    const loggedSamples = [];
+    const extractedCount = { A: 0, B: 0, C: 0 };
     const toolsUsed = new Set(['gas']);
 
     document.querySelectorAll('.req').forEach(el => el.innerText = MIN_SAMPLES_PER_CORE);
@@ -271,7 +268,7 @@ tr:nth-child(even){background:#f9f9f9}
         document.getElementById('complete-banner').style.display = isComplete() ? 'block' : 'none';
     }
 
-    // ===== OUTPUT =====
+    // ===== OUTPUT & ITERĀTED BRIDGE INTEGRATION =====
     function coreStats(core) {
         const s = loggedSamples.filter(x => x.core === core);
         if (!s.length) return { samples: 0, co2Min: null, co2Max: null, co2Avg: null, tempMin: null, tempMax: null, tempAvg: null, dustAvg: null };
@@ -299,18 +296,40 @@ tr:nth-child(even){background:#f9f9f9}
             allToolsUsed: toolsUsed.size === 3,
             stats: { coreA: coreStats('A'), coreB: coreStats('B'), coreC: coreStats('C') },
             timeSpentSeconds: Math.round((Date.now() - startTime) / 1000),
-            data: loggedSamples
+            // Renamed 'data' to 'dataTable' so IterātED auto-renders it as a table on the dashboard
+            dataTable: loggedSamples
         };
     }
-    window.getSimulationOutput = getSimulationOutput;
+
+    /**
+     * IterātED Simulation Bridge Implementation
+     */
+    function submitSimulation(simData = null) {
+        const message = {
+            action: "SIM_COMPLETE"
+        };
+
+        if (simData !== null && simData !== undefined) {
+            message.simData = simData;
+        }
+
+        // Target origin for safety; set to "*" or your platform host
+        const parentOrigin = "*";
+
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage(message, parentOrigin);
+        }
+    }
 
     function publishOutput() {
         const output = getSimulationOutput();
         window.simulationOutput = output;
-        try { window.parent.postMessage({ type: MESSAGE_TYPE, data: output }, '*'); } catch (e) { /* not embedded */ }
+        
+        // Transmit output via IterātED Bridge
+        submitSimulation(output);
     }
 
-    // Publish an initial (empty) state so the platform always has a value.
+    // Publish initial state
     publishOutput();
     window.addEventListener('pagehide', publishOutput);
 </script>
